@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useGetProductsQuery } from '../slices/productsApiSlice';
 import { Link } from 'react-router-dom';
-import { } from 'react-bootstrap';
 import Product from '../components/Product';
 import Loader from '../components/Loader';
 import Message from '../components/Message';
@@ -62,7 +61,7 @@ const HomeScreen = () => {
                 >
                   {category}
                 </h4>
-                <CategoryCarousel products={products} />
+                <CategoryCarousel category={category} currentProducts={products} />
               </div>
             )
           )}
@@ -78,49 +77,57 @@ const HomeScreen = () => {
   );
 };
 
-const CategoryCarousel = ({ products }) => {
+const CategoryCarousel = ({ category, currentProducts }) => {
   const [startIndex, setStartIndex] = useState(0);
   const [visibleCount, setVisibleCount] = useState(4);
+  const [allProducts, setAllProducts] = useState(currentProducts);
 
-  // Responsive visible count
+  useEffect(() => {
+    const fetchAll = async () => {
+      try {
+        const res = await fetch(
+          `/api/products/category/${encodeURIComponent(category)}`
+        );
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setAllProducts(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch category products', err);
+      }
+    };
+    fetchAll();
+  }, [category]);
+
   useEffect(() => {
     const updateVisibleCount = () => {
       const width = window.innerWidth;
       if (width < 576) {
-        setVisibleCount(1); // mobile — 1 card
+        setVisibleCount(1);
       } else if (width < 768) {
-        setVisibleCount(2); // tablet small — 2 cards
+        setVisibleCount(2);
       } else if (width < 992) {
-        setVisibleCount(3); // tablet — 3 cards
+        setVisibleCount(3);
       } else {
-        setVisibleCount(4); // desktop — 4 cards
+        setVisibleCount(4);
       }
     };
-
     updateVisibleCount();
     window.addEventListener('resize', updateVisibleCount);
     return () => window.removeEventListener('resize', updateVisibleCount);
   }, []);
 
   const canPrev = startIndex > 0;
-  const canNext = startIndex + visibleCount < products.length;
+  const canNext = startIndex + visibleCount < allProducts.length;
 
-  const prev = () => {
-    if (canPrev) setStartIndex((i) => i - 1);
-  };
+  const prev = () => { if (canPrev) setStartIndex((i) => i - 1); };
+  const next = () => { if (canNext) setStartIndex((i) => i + 1); };
 
-  const next = () => {
-    if (canNext) setStartIndex((i) => i + 1);
-  };
-
-  const visibleProducts = products.slice(startIndex, startIndex + visibleCount);
-
+  const visibleProducts = allProducts.slice(startIndex, startIndex + visibleCount);
   const cardWidth = `${100 / visibleCount}%`;
 
   return (
     <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-
-      {/* LEFT ARROW */}
       <button
         onClick={prev}
         disabled={!canPrev}
@@ -144,14 +151,7 @@ const CategoryCarousel = ({ products }) => {
         ‹
       </button>
 
-      {/* PRODUCT CARDS */}
-      <div
-        style={{
-          display: 'flex',
-          overflow: 'hidden',
-          width: '100%',
-        }}
-      >
+      <div style={{ display: 'flex', overflow: 'hidden', width: '100%' }}>
         {visibleProducts.map((product) => (
           <div
             key={product._id}
@@ -168,7 +168,6 @@ const CategoryCarousel = ({ products }) => {
         ))}
       </div>
 
-      {/* RIGHT ARROW */}
       <button
         onClick={next}
         disabled={!canNext}
