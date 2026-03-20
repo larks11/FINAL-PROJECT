@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useGetProductsQuery } from '../slices/productsApiSlice';
 import { Link } from 'react-router-dom';
-import { Row, Col } from 'react-bootstrap';
+import { } from 'react-bootstrap';
 import Product from '../components/Product';
 import Loader from '../components/Loader';
 import Message from '../components/Message';
@@ -18,7 +18,6 @@ const HomeScreen = () => {
     pageNumber,
   });
 
-  // Group products by category
   const groupByCategory = (products) => {
     return products.reduce((groups, product) => {
       const cat = product.category || 'Others';
@@ -52,7 +51,6 @@ const HomeScreen = () => {
           {Object.entries(groupByCategory(data.products)).map(
             ([category, products]) => (
               <div key={category} className='mb-5'>
-                {/* Category Title */}
                 <h4
                   style={{
                     fontWeight: 'bold',
@@ -64,8 +62,6 @@ const HomeScreen = () => {
                 >
                   {category}
                 </h4>
-
-                {/* Category Row Carousel */}
                 <CategoryCarousel products={products} />
               </div>
             )
@@ -82,10 +78,29 @@ const HomeScreen = () => {
   );
 };
 
-// ─── Category Carousel Component ─────────────────────────────────────────────
 const CategoryCarousel = ({ products }) => {
   const [startIndex, setStartIndex] = useState(0);
-  const visibleCount = 4; // how many cards visible at once
+  const [visibleCount, setVisibleCount] = useState(4);
+
+  // Responsive visible count
+  useEffect(() => {
+    const updateVisibleCount = () => {
+      const width = window.innerWidth;
+      if (width < 576) {
+        setVisibleCount(1); // mobile — 1 card
+      } else if (width < 768) {
+        setVisibleCount(2); // tablet small — 2 cards
+      } else if (width < 992) {
+        setVisibleCount(3); // tablet — 3 cards
+      } else {
+        setVisibleCount(4); // desktop — 4 cards
+      }
+    };
+
+    updateVisibleCount();
+    window.addEventListener('resize', updateVisibleCount);
+    return () => window.removeEventListener('resize', updateVisibleCount);
+  }, []);
 
   const canPrev = startIndex > 0;
   const canNext = startIndex + visibleCount < products.length;
@@ -100,9 +115,11 @@ const CategoryCarousel = ({ products }) => {
 
   const visibleProducts = products.slice(startIndex, startIndex + visibleCount);
 
+  const cardWidth = `${100 / visibleCount}%`;
+
   return (
     <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-      
+
       {/* LEFT ARROW */}
       <button
         onClick={prev}
@@ -112,12 +129,12 @@ const CategoryCarousel = ({ products }) => {
           color: '#fff',
           border: 'none',
           borderRadius: '50%',
-          width: '36px',
-          height: '36px',
-          fontSize: '20px',
+          width: '32px',
+          height: '32px',
+          fontSize: '18px',
           cursor: canPrev ? 'pointer' : 'not-allowed',
           flexShrink: 0,
-          marginRight: '8px',
+          marginRight: '6px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -128,21 +145,28 @@ const CategoryCarousel = ({ products }) => {
       </button>
 
       {/* PRODUCT CARDS */}
-      <Row className='flex-nowrap w-100' style={{ overflow: 'hidden', margin: 0 }}>
+      <div
+        style={{
+          display: 'flex',
+          overflow: 'hidden',
+          width: '100%',
+        }}
+      >
         {visibleProducts.map((product) => (
-          <Col
+          <div
             key={product._id}
             style={{
-              minWidth: '23%',
-              maxWidth: '23%',
+              minWidth: cardWidth,
+              maxWidth: cardWidth,
               padding: '0 6px',
               transition: 'all 0.3s ease',
+              boxSizing: 'border-box',
             }}
           >
             <Product product={product} />
-          </Col>
+          </div>
         ))}
-      </Row>
+      </div>
 
       {/* RIGHT ARROW */}
       <button
@@ -153,12 +177,12 @@ const CategoryCarousel = ({ products }) => {
           color: '#fff',
           border: 'none',
           borderRadius: '50%',
-          width: '36px',
-          height: '36px',
-          fontSize: '20px',
+          width: '32px',
+          height: '32px',
+          fontSize: '18px',
           cursor: canNext ? 'pointer' : 'not-allowed',
           flexShrink: 0,
-          marginLeft: '8px',
+          marginLeft: '6px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
