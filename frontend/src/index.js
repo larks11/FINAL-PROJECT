@@ -81,7 +81,6 @@ root.render(
     <HelmetProvider>
       <Provider store={store}>
         <PayPalScriptProvider deferLoading={true}>
-          {/* GOOGLE OAUTH PROVIDER — i-replace ang YOUR_GOOGLE_CLIENT_ID */}
           <GoogleOAuthProvider clientId="28291555489-3ojl3sp2flaf7iplgmgi7kjgmjensbor.apps.googleusercontent.com">
             <RouterProvider router={router} />
           </GoogleOAuthProvider>
