@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   authUser,
+  googleAuth, 
   registerUser,
   logoutUser,
   getUserProfile,
@@ -16,6 +17,7 @@ const router = express.Router();
 
 router.route('/').post(registerUser).get(protect, admin, getUsers);
 router.post('/auth', authUser);
+router.post('/google', googleAuth);
 router.post('/logout', logoutUser);
 router
   .route('/profile')
@@ -28,3 +30,4 @@ router
   .put(protect, admin, updateUser);
 
 export default router;
+
