@@ -4,10 +4,10 @@ import { Form, Button, Row, Col } from 'react-bootstrap';
 import { useDispatch, useSelector } from 'react-redux';
 import Loader from '../components/Loader';
 import FormContainer from '../components/FormContainer';
-
-import { useLoginMutation } from '../slices/usersApiSlice';
+import { useLoginMutation, useGoogleLoginMutation } from '../slices/usersApiSlice';
 import { setCredentials } from '../slices/authSlice';
 import { toast } from 'react-toastify';
+import { GoogleLogin } from '@react-oauth/google';
 
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
@@ -17,6 +17,7 @@ const LoginScreen = () => {
   const navigate = useNavigate();
 
   const [login, { isLoading }] = useLoginMutation();
+  const [googleLogin, { isLoading: isGoogleLoading }] = useGoogleLoginMutation();
 
   const { userInfo } = useSelector((state) => state.auth);
 
@@ -41,6 +42,19 @@ const LoginScreen = () => {
     }
   };
 
+  const googleSuccessHandler = async (credentialResponse) => {
+    try {
+      const res = await googleLogin({
+        credential: credentialResponse.credential,
+      }).unwrap();
+      dispatch(setCredentials({ ...res }));
+      navigate(redirect);
+      toast.success(`Welcome, ${res.name}!`);
+    } catch (err) {
+      toast.error(err?.data?.message || err.error);
+    }
+  };
+
   return (
     <FormContainer>
       <h1>Sign In</h1>
@@ -53,7 +67,7 @@ const LoginScreen = () => {
             placeholder='Enter email'
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-          ></Form.Control>
+          />
         </Form.Group>
 
         <Form.Group className='my-2' controlId='password'>
@@ -63,7 +77,7 @@ const LoginScreen = () => {
             placeholder='Enter password'
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-          ></Form.Control>
+          />
         </Form.Group>
 
         <Button disabled={isLoading} type='submit' variant='primary'>
@@ -72,6 +86,33 @@ const LoginScreen = () => {
 
         {isLoading && <Loader />}
       </Form>
+
+      {/* DIVIDER */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        margin: '20px 0',
+        gap: '10px',
+      }}>
+        <hr style={{ flex: 1 }} />
+        <span style={{ color: '#888', fontSize: '14px' }}>or</span>
+        <hr style={{ flex: 1 }} />
+      </div>
+
+      {/* GOOGLE LOGIN BUTTON */}
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <GoogleLogin
+          onSuccess={googleSuccessHandler}
+          onError={() => toast.error('Google login failed')}
+          useOneTap
+          theme='outline'
+          size='large'
+          text='signin_with'
+          shape='rectangular'
+        />
+      </div>
+
+      {isGoogleLoading && <Loader />}
 
       <Row className='py-3'>
         <Col>

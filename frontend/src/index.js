@@ -7,6 +7,7 @@ import "slick-carousel/slick/slick-theme.css";
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import AdminRequestScreen from './screens/AdminRequestScreen';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import {
   createBrowserRouter,
   createRoutesFromElements,
@@ -50,7 +51,6 @@ const router = createBrowserRouter(
       <Route path='/login' element={<LoginScreen />} />
       <Route path='/register' element={<RegisterScreen />} />
 
-      {/* Registered users */}
       <Route path='' element={<PrivateRoute />}>
         <Route path='/shipping' element={<ShippingScreen />} />
         <Route path='/payment' element={<PaymentScreen />} />
@@ -59,7 +59,6 @@ const router = createBrowserRouter(
         <Route path='/profile' element={<ProfileScreen />} />
       </Route>
 
-      {/* Admin users */}
       <Route path='' element={<AdminRoute />}>
         <Route path='/admin/orderlist' element={<OrderListScreen />} />
         <Route path='/admin/productlist' element={<ProductListScreen />} />
@@ -70,7 +69,6 @@ const router = createBrowserRouter(
         <Route path='/admin/userlist' element={<UserListScreen />} />
         <Route path='/admin/product/:id/edit' element={<ProductEditScreen />} />
         <Route path='/admin/user/:id/edit' element={<UserEditScreen />} />
-        {/* REQUESTS — bag-o */}
         <Route path='/admin/requests' element={<AdminRequestScreen />} />
       </Route>
     </Route>
@@ -83,7 +81,10 @@ root.render(
     <HelmetProvider>
       <Provider store={store}>
         <PayPalScriptProvider deferLoading={true}>
-          <RouterProvider router={router} />
+          {/* GOOGLE OAUTH PROVIDER — i-replace ang YOUR_GOOGLE_CLIENT_ID */}
+          <GoogleOAuthProvider clientId='YOUR_GOOGLE_CLIENT_ID'>
+            <RouterProvider router={router} />
+          </GoogleOAuthProvider>
         </PayPalScriptProvider>
       </Provider>
     </HelmetProvider>
@@ -91,3 +92,4 @@ root.render(
 );
 
 reportWebVitals();
+

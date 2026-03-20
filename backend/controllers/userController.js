@@ -1,15 +1,16 @@
 import asyncHandler from '../middleware/asyncHandler.js';
 import generateToken from '../utils/generateToken.js';
 import User from '../models/userModel.js';
+import { OAuth2Client } from 'google-auth-library';
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const authUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
-
   const user = await User.findOne({ email });
 
   if (user && (await user.matchPassword(password))) {
     generateToken(res, user._id);
-
     res.json({
       _id: user._id,
       name: user.name,
@@ -22,9 +23,40 @@ const authUser = asyncHandler(async (req, res) => {
   }
 });
 
+const googleAuth = asyncHandler(async (req, res) => {
+  const { credential } = req.body;
+
+  const ticket = await client.verifyIdToken({
+    idToken: credential,
+    audience: process.env.GOOGLE_CLIENT_ID,
+  });
+
+  const { name, email, sub: googleId } = ticket.getPayload();
+
+  let user = await User.findOne({ email });
+
+  if (!user) {
+    // Auto-create account kung bag-o nga user
+    user = await User.create({
+      name,
+      email,
+      googleId,
+      password: null,
+    });
+  }
+
+  generateToken(res, user._id);
+
+  res.json({
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    isAdmin: user.isAdmin,
+  });
+});
+
 const registerUser = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
-
   const userExists = await User.findOne({ email });
 
   if (userExists) {
@@ -32,15 +64,10 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new Error('User already exists');
   }
 
-  const user = await User.create({
-    name,
-    email,
-    password,
-  });
+  const user = await User.create({ name, email, password });
 
   if (user) {
     generateToken(res, user._id);
-
     res.status(201).json({
       _id: user._id,
       name: user.name,
@@ -60,7 +87,6 @@ const logoutUser = (req, res) => {
 
 const getUserProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
-
   if (user) {
     res.json({
       _id: user._id,
@@ -76,17 +102,13 @@ const getUserProfile = asyncHandler(async (req, res) => {
 
 const updateUserProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
-
   if (user) {
     user.name = req.body.name || user.name;
     user.email = req.body.email || user.email;
-
     if (req.body.password) {
       user.password = req.body.password;
     }
-
     const updatedUser = await user.save();
-
     res.json({
       _id: updatedUser._id,
       name: updatedUser.name,
@@ -106,7 +128,6 @@ const getUsers = asyncHandler(async (req, res) => {
 
 const deleteUser = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
-
   if (user) {
     if (user.isAdmin) {
       res.status(400);
@@ -122,7 +143,6 @@ const deleteUser = asyncHandler(async (req, res) => {
 
 const getUserById = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id).select('-password');
-
   if (user) {
     res.json(user);
   } else {
@@ -133,14 +153,11 @@ const getUserById = asyncHandler(async (req, res) => {
 
 const updateUser = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
-
   if (user) {
     user.name = req.body.name || user.name;
     user.email = req.body.email || user.email;
     user.isAdmin = Boolean(req.body.isAdmin);
-
     const updatedUser = await user.save();
-
     res.json({
       _id: updatedUser._id,
       name: updatedUser.name,
@@ -155,6 +172,7 @@ const updateUser = asyncHandler(async (req, res) => {
 
 export {
   authUser,
+  googleAuth,
   registerUser,
   logoutUser,
   getUserProfile,
