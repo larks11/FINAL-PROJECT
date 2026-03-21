@@ -2,14 +2,17 @@ import { useState } from 'react';
 import { Table, Badge, Button, Modal } from 'react-bootstrap';
 import Loader from '../components/Loader';
 import Message from '../components/Message';
+import { FaTrash } from 'react-icons/fa';
 import {
   useGetRequestsQuery,
   useMarkRequestReadMutation,
 } from '../slices/productsApiSlice';
+import { useSelector } from 'react-redux';
 
 const AdminRequestScreen = () => {
   const { data: requests, isLoading, error, refetch } = useGetRequestsQuery();
   const [markRead] = useMarkRequestReadMutation();
+  const { userInfo } = useSelector((state) => state.auth);
 
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -23,9 +26,52 @@ const AdminRequestScreen = () => {
     }
   };
 
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this request?')) {
+      try {
+        await fetch(`/api/products/requests/${id}`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${userInfo.token}`,
+          },
+        });
+        refetch();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (window.confirm('Delete ALL requests? This cannot be undone.')) {
+      try {
+        await fetch(`/api/products/requests/all`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${userInfo.token}`,
+          },
+        });
+        refetch();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
   return (
     <div>
-      <h2 className='my-4'>🔔 Product Requests</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2 className='my-4'>🔔 Product Requests</h2>
+        {requests?.length > 0 && (
+          <Button
+            variant='danger'
+            size='sm'
+            onClick={handleDeleteAll}
+          >
+            <FaTrash /> Delete All
+          </Button>
+        )}
+      </div>
 
       {isLoading ? (
         <Loader />
@@ -58,8 +104,12 @@ const AdminRequestScreen = () => {
                 <td>{r.user?.name}</td>
                 <td>{r.user?.email}</td>
                 <td>{r.productName}</td>
-                <td style={{ maxWidth: '200px', overflow: 'hidden',
-                  textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <td style={{
+                  maxWidth: '200px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}>
                   {r.message || '—'}
                 </td>
                 <td>
@@ -71,13 +121,20 @@ const AdminRequestScreen = () => {
                   )}
                 </td>
                 <td>{new Date(r.createdAt).toLocaleDateString('en-PH')}</td>
-                <td>
+                <td style={{ display: 'flex', gap: '5px' }}>
                   <Button
                     size='sm'
                     variant='outline-primary'
                     onClick={() => handleView(r)}
                   >
                     View
+                  </Button>
+                  <Button
+                    size='sm'
+                    variant='danger'
+                    onClick={() => handleDelete(r._id)}
+                  >
+                    <FaTrash />
                   </Button>
                 </td>
               </tr>
@@ -86,7 +143,6 @@ const AdminRequestScreen = () => {
         </Table>
       )}
 
-      {/* VIEW MODAL */}
       <Modal show={showModal} onHide={() => setShowModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>Request Details</Modal.Title>
@@ -108,8 +164,10 @@ const AdminRequestScreen = () => {
             </p>
             <p><strong>Message:</strong></p>
             <div style={{
-              background: '#f8f9fa', borderRadius: '8px',
-              padding: '12px', minHeight: '60px',
+              background: '#f8f9fa',
+              borderRadius: '8px',
+              padding: '12px',
+              minHeight: '60px',
             }}>
               {selectedRequest.message || 'No message provided.'}
             </div>

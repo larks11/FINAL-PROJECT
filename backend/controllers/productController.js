@@ -195,6 +195,22 @@ const getUnreadCount = asyncHandler(async (req, res) => {
   res.json({ count });
 });
 
+const deleteRequest = asyncHandler(async (req, res) => {
+  const request = await Request.findById(req.params.id);
+  if (request) {
+    await Request.deleteOne({ _id: request._id });
+    res.json({ message: 'Request removed' });
+  } else {
+    res.status(404);
+    throw new Error('Request not found');
+  }
+});
+
+const deleteAllRequests = asyncHandler(async (req, res) => {
+  await Request.deleteMany({});
+  res.json({ message: 'All requests removed' });
+});
+
 export {
   getProducts,
   getProductById,
@@ -209,4 +225,6 @@ export {
   getRequests,
   markRequestRead,
   getUnreadCount,
+  deleteRequest,
+  deleteAllRequests
 };
