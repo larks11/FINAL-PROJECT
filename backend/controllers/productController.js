@@ -46,7 +46,6 @@ const createProduct = asyncHandler(async (req, res) => {
   res.status(201).json(createdProduct);
 });
 
-
 const updateProduct = asyncHandler(async (req, res) => {
   const { name, price, description, image, brand, category, countInStock } =
     req.body;
@@ -78,7 +77,6 @@ const updateProduct = asyncHandler(async (req, res) => {
   }
 });
 
-
 const deleteProduct = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id);
 
@@ -90,7 +88,6 @@ const deleteProduct = asyncHandler(async (req, res) => {
     throw new Error('Product not found');
   }
 });
-
 
 const createProductReview = asyncHandler(async (req, res) => {
   const { rating, comment } = req.body;
@@ -178,6 +175,13 @@ const getRequests = asyncHandler(async (req, res) => {
   res.json(requests);
 });
 
+const getMyRequests = asyncHandler(async (req, res) => {
+  const requests = await Request.find({ user: req.user._id })
+    .populate('product', 'name image countInStock')
+    .sort({ createdAt: -1 });
+  res.json(requests);
+});
+
 const markRequestRead = asyncHandler(async (req, res) => {
   const request = await Request.findById(req.params.id);
   if (request) {
@@ -211,6 +215,60 @@ const deleteAllRequests = asyncHandler(async (req, res) => {
   res.json({ message: 'All requests removed' });
 });
 
+const replyToRequest = asyncHandler(async (req, res) => {
+  const { message } = req.body;
+  const request = await Request.findById(req.params.id);
+
+  if (request) {
+    request.replies.push({
+      sender: 'admin',
+      senderName: req.user.name,
+      message,
+    });
+    request.hasNewReply = true;
+    await request.save();
+    res.status(201).json({ message: 'Reply sent' });
+  } else {
+    res.status(404);
+    throw new Error('Request not found');
+  }
+});
+
+const userReplyToRequest = asyncHandler(async (req, res) => {
+  const { message } = req.body;
+  const request = await Request.findById(req.params.id);
+
+  if (request) {
+    if (request.user.toString() !== req.user._id.toString()) {
+      res.status(401);
+      throw new Error('Not authorized');
+    }
+    request.replies.push({
+      sender: 'user',
+      senderName: req.user.name,
+      message,
+    });
+    request.isRead = false;
+    await request.save();
+    res.status(201).json({ message: 'Reply sent' });
+  } else {
+    res.status(404);
+    throw new Error('Request not found');
+  }
+});
+
+const markReplySeen = asyncHandler(async (req, res) => {
+  const request = await Request.findById(req.params.id);
+  if (request) {
+    request.hasNewReply = false;
+    await request.save();
+    res.json({ message: 'Marked as seen' });
+  } else {
+    res.status(404);
+    throw new Error('Request not found');
+  }
+});
+
 export {
   getProducts,
   getProductById,
@@ -223,8 +281,12 @@ export {
   checkUserOrder,
   requestProduct,
   getRequests,
+  getMyRequests,
   markRequestRead,
   getUnreadCount,
   deleteRequest,
-  deleteAllRequests
+  deleteAllRequests,
+  replyToRequest,
+  userReplyToRequest,
+  markReplySeen,
 };

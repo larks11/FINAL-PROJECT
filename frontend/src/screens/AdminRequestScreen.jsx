@@ -1,28 +1,52 @@
 import { useState } from 'react';
-import { Table, Badge, Button, Modal } from 'react-bootstrap';
+import { Table, Badge, Button, Modal, Form } from 'react-bootstrap';
 import Loader from '../components/Loader';
 import Message from '../components/Message';
-import { FaTrash } from 'react-icons/fa';
+import { FaTrash, FaPaperPlane } from 'react-icons/fa';
 import {
   useGetRequestsQuery,
   useMarkRequestReadMutation,
+  useReplyToRequestMutation,
 } from '../slices/productsApiSlice';
 import { useSelector } from 'react-redux';
 
 const AdminRequestScreen = () => {
   const { data: requests, isLoading, error, refetch } = useGetRequestsQuery();
   const [markRead] = useMarkRequestReadMutation();
+  const [replyToRequest, { isLoading: loadingReply }] = useReplyToRequestMutation();
   const { userInfo } = useSelector((state) => state.auth);
 
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [replyMessage, setReplyMessage] = useState('');
 
   const handleView = async (request) => {
     setSelectedRequest(request);
     setShowModal(true);
+    setReplyMessage('');
     if (!request.isRead) {
       await markRead(request._id);
       refetch();
+    }
+  };
+
+  const handleReply = async () => {
+    if (!replyMessage.trim()) return;
+    try {
+      await replyToRequest({
+        id: selectedRequest._id,
+        message: replyMessage,
+      }).unwrap();
+      setReplyMessage('');
+      refetch();
+      const updated = await fetch(`/api/products/requests`, {
+        headers: { Authorization: `Bearer ${userInfo.token}` },
+      });
+      const data = await updated.json();
+      const updatedRequest = data.find((r) => r._id === selectedRequest._id);
+      if (updatedRequest) setSelectedRequest(updatedRequest);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -31,10 +55,9 @@ const AdminRequestScreen = () => {
       try {
         await fetch(`/api/products/requests/${id}`, {
           method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${userInfo.token}`,
-          },
+          headers: { Authorization: `Bearer ${userInfo.token}` },
         });
+        setShowModal(false);
         refetch();
       } catch (err) {
         console.error(err);
@@ -47,9 +70,7 @@ const AdminRequestScreen = () => {
       try {
         await fetch(`/api/products/requests/all`, {
           method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${userInfo.token}`,
-          },
+          headers: { Authorization: `Bearer ${userInfo.token}` },
         });
         refetch();
       } catch (err) {
@@ -63,11 +84,7 @@ const AdminRequestScreen = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2 className='my-4'>🔔 Product Requests</h2>
         {requests?.length > 0 && (
-          <Button
-            variant='danger'
-            size='sm'
-            onClick={handleDeleteAll}
-          >
+          <Button variant='danger' size='sm' onClick={handleDeleteAll}>
             <FaTrash /> Delete All
           </Button>
         )}
@@ -119,21 +136,18 @@ const AdminRequestScreen = () => {
                   {!r.isRead && (
                     <Badge bg='danger' style={{ marginLeft: '5px' }}>NEW</Badge>
                   )}
+                  {r.replies?.length > 0 && (
+                    <Badge bg='info' style={{ marginLeft: '5px' }}>
+                      💬 {r.replies.length}
+                    </Badge>
+                  )}
                 </td>
                 <td>{new Date(r.createdAt).toLocaleDateString('en-PH')}</td>
                 <td style={{ display: 'flex', gap: '5px' }}>
-                  <Button
-                    size='sm'
-                    variant='outline-primary'
-                    onClick={() => handleView(r)}
-                  >
-                    View
+                  <Button size='sm' variant='outline-primary' onClick={() => handleView(r)}>
+                    Chat
                   </Button>
-                  <Button
-                    size='sm'
-                    variant='danger'
-                    onClick={() => handleDelete(r._id)}
-                  >
+                  <Button size='sm' variant='danger' onClick={() => handleDelete(r._id)}>
                     <FaTrash />
                   </Button>
                 </td>
@@ -143,37 +157,110 @@ const AdminRequestScreen = () => {
         </Table>
       )}
 
-      <Modal show={showModal} onHide={() => setShowModal(false)} centered>
+      {/* CHAT MODAL */}
+      <Modal show={showModal} onHide={() => setShowModal(false)} centered size='lg'>
         <Modal.Header closeButton>
-          <Modal.Title>Request Details</Modal.Title>
+          <Modal.Title>
+            💬 Chat — {selectedRequest?.productName}
+          </Modal.Title>
         </Modal.Header>
         {selectedRequest && (
           <Modal.Body>
-            <p><strong>User:</strong> {selectedRequest.user?.name}</p>
-            <p><strong>Email:</strong> {selectedRequest.user?.email}</p>
-            <p><strong>Product:</strong> {selectedRequest.productName}</p>
-            <p><strong>Stock:</strong>{' '}
-              {selectedRequest.product?.countInStock > 0
-                ? `${selectedRequest.product.countInStock} in stock`
-                : 'Out of stock'}
-            </p>
-            <p><strong>Status:</strong>{' '}
-              <Badge bg={selectedRequest.status === 'available' ? 'success' : 'warning'}>
-                {selectedRequest.status === 'available' ? '✅ Available' : '⏳ Pending'}
-              </Badge>
-            </p>
-            <p><strong>Message:</strong></p>
+            <div style={{ marginBottom: '10px' }}>
+              <small className='text-muted'>
+                User: <strong>{selectedRequest.user?.name}</strong> ({selectedRequest.user?.email})
+              </small>
+            </div>
+
+            {/* CHAT MESSAGES */}
             <div style={{
-              background: '#f8f9fa',
+              height: '350px',
+              overflowY: 'auto',
+              border: '1px solid #dee2e6',
               borderRadius: '8px',
               padding: '12px',
-              minHeight: '60px',
+              backgroundColor: '#f8f9fa',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
             }}>
-              {selectedRequest.message || 'No message provided.'}
+              {/* Original message */}
+              <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                <div style={{
+                  maxWidth: '70%',
+                  backgroundColor: '#fff',
+                  border: '1px solid #dee2e6',
+                  borderRadius: '12px 12px 12px 0',
+                  padding: '10px 14px',
+                }}>
+                  <small style={{ color: '#0d6efd', fontWeight: 'bold' }}>
+                    {selectedRequest.user?.name}
+                  </small>
+                  <p style={{ margin: '4px 0 0', fontSize: '14px' }}>
+                    {selectedRequest.message || 'No message'}
+                  </p>
+                  <small style={{ color: '#aaa', fontSize: '11px' }}>
+                    {new Date(selectedRequest.createdAt).toLocaleString('en-PH')}
+                  </small>
+                </div>
+              </div>
+
+              {/* Replies */}
+              {selectedRequest.replies?.map((reply, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: 'flex',
+                    justifyContent: reply.sender === 'admin' ? 'flex-end' : 'flex-start',
+                  }}
+                >
+                  <div style={{
+                    maxWidth: '70%',
+                    backgroundColor: reply.sender === 'admin' ? '#0d6efd' : '#fff',
+                    color: reply.sender === 'admin' ? '#fff' : '#000',
+                    border: reply.sender === 'admin' ? 'none' : '1px solid #dee2e6',
+                    borderRadius: reply.sender === 'admin'
+                      ? '12px 12px 0 12px'
+                      : '12px 12px 12px 0',
+                    padding: '10px 14px',
+                  }}>
+                    <small style={{
+                      fontWeight: 'bold',
+                      color: reply.sender === 'admin' ? '#cce' : '#0d6efd',
+                    }}>
+                      {reply.sender === 'admin' ? '👤 Admin' : reply.senderName}
+                    </small>
+                    <p style={{ margin: '4px 0 0', fontSize: '14px' }}>
+                      {reply.message}
+                    </p>
+                    <small style={{
+                      fontSize: '11px',
+                      color: reply.sender === 'admin' ? '#cce' : '#aaa',
+                    }}>
+                      {new Date(reply.createdAt).toLocaleString('en-PH')}
+                    </small>
+                  </div>
+                </div>
+              ))}
             </div>
-            <p className='mt-2 text-muted' style={{ fontSize: '12px' }}>
-              Sent: {new Date(selectedRequest.createdAt).toLocaleString('en-PH')}
-            </p>
+
+            {/* REPLY INPUT */}
+            <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+              <Form.Control
+                type='text'
+                placeholder='Type your reply...'
+                value={replyMessage}
+                onChange={(e) => setReplyMessage(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleReply()}
+              />
+              <Button
+                variant='primary'
+                onClick={handleReply}
+                disabled={loadingReply || !replyMessage.trim()}
+              >
+                <FaPaperPlane />
+              </Button>
+            </div>
           </Modal.Body>
         )}
         <Modal.Footer>

@@ -1,5 +1,24 @@
 import mongoose from 'mongoose';
 
+const replySchema = new mongoose.Schema(
+  {
+    sender: {
+      type: String,
+      enum: ['admin', 'user'],
+      required: true,
+    },
+    senderName: {
+      type: String,
+      required: true,
+    },
+    message: {
+      type: String,
+      required: true,
+    },
+  },
+  { timestamps: true }
+);
+
 const requestSchema = new mongoose.Schema(
   {
     user: {
@@ -25,6 +44,11 @@ const requestSchema = new mongoose.Schema(
       default: 'pending',
     },
     isRead: {
+      type: Boolean,
+      default: false,
+    },
+    replies: [replySchema],
+    hasNewReply: {
       type: Boolean,
       default: false,
     },

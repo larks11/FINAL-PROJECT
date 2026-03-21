@@ -8,6 +8,7 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import AdminRequestScreen from './screens/AdminRequestScreen';
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import UserRequestScreen from './screens/UserRequestScreen';
 import {
   createBrowserRouter,
   createRoutesFromElements,
@@ -57,6 +58,7 @@ const router = createBrowserRouter(
         <Route path='/placeorder' element={<PlaceOrderScreen />} />
         <Route path='/order/:id' element={<OrderScreen />} />
         <Route path='/profile' element={<ProfileScreen />} />
+        <Route path='/my-requests' element={<UserRequestScreen />} />
       </Route>
 
       <Route path='' element={<AdminRoute />}>

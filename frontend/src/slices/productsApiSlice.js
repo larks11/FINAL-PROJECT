@@ -84,11 +84,17 @@ export const productsApiSlice = apiSlice.injectEndpoints({
         method: 'POST',
         body: data,
       }),
+      invalidatesTags: ['MyRequests'],
     }),
     getRequests: builder.query({
       query: () => `${PRODUCTS_URL}/requests`,
       keepUnusedDataFor: 5,
       providesTags: ['Requests'],
+    }),
+    getMyRequests: builder.query({
+      query: () => `${PRODUCTS_URL}/my-requests`,
+      keepUnusedDataFor: 5,
+      providesTags: ['MyRequests'],
     }),
     getUnreadCount: builder.query({
       query: () => `${PRODUCTS_URL}/requests/unread-count`,
@@ -101,6 +107,29 @@ export const productsApiSlice = apiSlice.injectEndpoints({
         method: 'PUT',
       }),
       invalidatesTags: ['Requests'],
+    }),
+    markReplySeen: builder.mutation({
+      query: (id) => ({
+        url: `${PRODUCTS_URL}/requests/${id}/seen`,
+        method: 'PUT',
+      }),
+      invalidatesTags: ['MyRequests'],
+    }),
+    replyToRequest: builder.mutation({
+      query: ({ id, message }) => ({
+        url: `${PRODUCTS_URL}/requests/${id}/reply`,
+        method: 'POST',
+        body: { message },
+      }),
+      invalidatesTags: ['Requests'],
+    }),
+    userReplyToRequest: builder.mutation({
+      query: ({ id, message }) => ({
+        url: `${PRODUCTS_URL}/requests/${id}/user-reply`,
+        method: 'POST',
+        body: { message },
+      }),
+      invalidatesTags: ['MyRequests'],
     }),
   }),
 });
@@ -118,6 +147,10 @@ export const {
   useGetTopProductsQuery,
   useSubmitRequestMutation,
   useGetRequestsQuery,
+  useGetMyRequestsQuery,
   useGetUnreadCountQuery,
   useMarkRequestReadMutation,
+  useMarkReplySeenMutation,
+  useReplyToRequestMutation,
+  useUserReplyToRequestMutation,
 } = productsApiSlice;
