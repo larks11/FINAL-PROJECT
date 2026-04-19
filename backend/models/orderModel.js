@@ -72,6 +72,17 @@ const orderSchema = mongoose.Schema(
     deliveredAt: {
       type: Date,
     },
+    isCancelled: {
+      type: Boolean,
+      default: false,
+    },
+    cancelledAt: {
+      type: Date,
+    },
+    cancelReason: {
+      type: String,
+      default: '',
+    },
   },
   {
     timestamps: true,
@@ -79,5 +90,4 @@ const orderSchema = mongoose.Schema(
 );
 
 const Order = mongoose.model('Order', orderSchema);
-
 export default Order;

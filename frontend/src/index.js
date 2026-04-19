@@ -9,6 +9,7 @@ import reportWebVitals from './reportWebVitals';
 import AdminRequestScreen from './screens/AdminRequestScreen';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import UserRequestScreen from './screens/UserRequestScreen';
+import MyOrdersScreen from './screens/MyOrdersScreen';
 import {
   createBrowserRouter,
   createRoutesFromElements,
@@ -43,31 +44,28 @@ const router = createBrowserRouter(
       <Route index={true} path='/' element={<HomeScreen />} />
       <Route path='/search/:keyword' element={<HomeScreen />} />
       <Route path='/page/:pageNumber' element={<HomeScreen />} />
-      <Route
-        path='/search/:keyword/page/:pageNumber'
-        element={<HomeScreen />}
-      />
+      <Route path='/search/:keyword/page/:pageNumber' element={<HomeScreen />} />
       <Route path='/product/:id' element={<ProductScreen />} />
       <Route path='/cart' element={<CartScreen />} />
       <Route path='/login' element={<LoginScreen />} />
       <Route path='/register' element={<RegisterScreen />} />
 
+      {/* ===== PRIVATE ROUTES ===== */}
       <Route path='' element={<PrivateRoute />}>
         <Route path='/shipping' element={<ShippingScreen />} />
         <Route path='/payment' element={<PaymentScreen />} />
         <Route path='/placeorder' element={<PlaceOrderScreen />} />
         <Route path='/order/:id' element={<OrderScreen />} />
         <Route path='/profile' element={<ProfileScreen />} />
+        <Route path='/myorders' element={<MyOrdersScreen />} />
         <Route path='/my-requests' element={<UserRequestScreen />} />
       </Route>
 
+      {/* ===== ADMIN ROUTES ===== */}
       <Route path='' element={<AdminRoute />}>
         <Route path='/admin/orderlist' element={<OrderListScreen />} />
         <Route path='/admin/productlist' element={<ProductListScreen />} />
-        <Route
-          path='/admin/productlist/:pageNumber'
-          element={<ProductListScreen />}
-        />
+        <Route path='/admin/productlist/:pageNumber' element={<ProductListScreen />} />
         <Route path='/admin/userlist' element={<UserListScreen />} />
         <Route path='/admin/product/:id/edit' element={<ProductEditScreen />} />
         <Route path='/admin/user/:id/edit' element={<UserEditScreen />} />
@@ -93,4 +91,3 @@ root.render(
 );
 
 reportWebVitals();
-

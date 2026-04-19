@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Table, Button, Form, InputGroup, Row, Col } from 'react-bootstrap';
-import { FaTimes, FaSearch, FaTrash } from 'react-icons/fa';
+import { Table, Button, Form, InputGroup, Row, Col, Badge } from 'react-bootstrap';
+import { FaSearch, FaTrash } from 'react-icons/fa';
 import Message from '../../components/Message';
 import Loader from '../../components/Loader';
 import {
@@ -27,6 +27,13 @@ const OrderListScreen = () => {
     }
   };
 
+  const getStatusBadge = (order) => {
+    if (order.isCancelled) return <Badge bg='danger'>Cancelled</Badge>;
+    if (order.isDelivered) return <Badge bg='success'>Delivered</Badge>;
+    if (order.isPaid) return <Badge bg='info'>Processing</Badge>;
+    return <Badge bg='warning'>Pending</Badge>;
+  };
+
   const filteredOrders = orders?.filter((order) =>
     order._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (order.user?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
@@ -35,12 +42,9 @@ const OrderListScreen = () => {
   return (
     <>
       <Row className='align-items-center mb-3'>
-        <Col>
-          <h1>Orders</h1>
-        </Col>
+        <Col><h1>Orders</h1></Col>
       </Row>
 
-      {/* SEARCH BAR */}
       <Row className='mb-3'>
         <Col md={6}>
           <InputGroup>
@@ -81,33 +85,21 @@ const OrderListScreen = () => {
               <th>USER</th>
               <th>DATE</th>
               <th>TOTAL</th>
-              <th>PAID</th>
-              <th>DELIVERED</th>
+              <th>STATUS</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             {filteredOrders.length > 0 ? (
               filteredOrders.map((order) => (
-                <tr key={order._id}>
-                  <td>{order._id}</td>
+                <tr key={order._id}
+                  style={{ opacity: order.isCancelled ? 0.7 : 1 }}
+                >
+                  <td style={{ fontSize: '12px' }}>{order._id}</td>
                   <td>{order.user && order.user.name}</td>
                   <td>{order.createdAt.substring(0, 10)}</td>
                   <td>₱{Number(order.totalPrice).toLocaleString('en-PH')}</td>
-                  <td>
-                    {order.isPaid ? (
-                      order.paidAt.substring(0, 10)
-                    ) : (
-                      <FaTimes style={{ color: 'red' }} />
-                    )}
-                  </td>
-                  <td>
-                    {order.isDelivered ? (
-                      order.deliveredAt.substring(0, 10)
-                    ) : (
-                      <FaTimes style={{ color: 'red' }} />
-                    )}
-                  </td>
+                  <td>{getStatusBadge(order)}</td>
                   <td style={{ display: 'flex', gap: '5px' }}>
                     <Button
                       as={Link}
@@ -129,7 +121,7 @@ const OrderListScreen = () => {
               ))
             ) : (
               <tr>
-                <td colSpan='7' className='text-center'>
+                <td colSpan='6' className='text-center'>
                   No orders found matching "{searchTerm}"
                 </td>
               </tr>

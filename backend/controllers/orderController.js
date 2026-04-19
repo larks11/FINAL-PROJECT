@@ -1,6 +1,7 @@
 import asyncHandler from '../middleware/asyncHandler.js';
 import Order from '../models/orderModel.js';
 import Product from '../models/productModel.js';
+import Request from '../models/requestModel.js';
 import { calcPrices } from '../utils/calcPrices.js';
 import { verifyPayPalPayment, checkIfNewTransaction } from '../utils/paypal.js';
 
@@ -15,7 +16,6 @@ const addOrderItems = asyncHandler(async (req, res) => {
       _id: { $in: orderItems.map((x) => x._id) },
     });
 
- 
     for (const itemFromClient of orderItems) {
       const matchingItemFromDB = itemsFromDB.find(
         (itemFromDB) => itemFromDB._id.toString() === itemFromClient._id
@@ -52,18 +52,25 @@ const addOrderItems = asyncHandler(async (req, res) => {
       totalPrice,
       isPaid: true,
       paidAt: Date.now(),
-      isDelivered: true,
-      deliveredAt: Date.now(),
+      isDelivered: false,
     });
 
     const createdOrder = await order.save();
-
 
     for (const itemFromClient of orderItems) {
       await Product.findByIdAndUpdate(itemFromClient._id, {
         $inc: { countInStock: -itemFromClient.qty },
       });
     }
+
+    // Notify admin via Request system
+    await Request.create({
+      user: req.user._id,
+      productName: `ORDER #${createdOrder._id.toString().slice(-6).toUpperCase()}`,
+      message: `New order placed! Items: ${dbOrderItems.map(i => `${i.name} x${i.qty}`).join(', ')}. Total: ₱${totalPrice.toLocaleString('en-PH')}`,
+      status: 'pending',
+      isRead: false,
+    });
 
     res.status(201).json(createdOrder);
   }
@@ -75,11 +82,7 @@ const getMyOrders = asyncHandler(async (req, res) => {
 });
 
 const getOrderById = asyncHandler(async (req, res) => {
-  const order = await Order.findById(req.params.id).populate(
-    'user',
-    'name email'
-  );
-
+  const order = await Order.findById(req.params.id).populate('user', 'name email');
   if (order) {
     res.json(order);
   } else {
@@ -120,10 +123,41 @@ const updateOrderToPaid = asyncHandler(async (req, res) => {
 
 const updateOrderToDelivered = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id);
-
   if (order) {
     order.isDelivered = true;
     order.deliveredAt = Date.now();
+    const updatedOrder = await order.save();
+    res.json(updatedOrder);
+  } else {
+    res.status(404);
+    throw new Error('Order not found');
+  }
+});
+
+const cancelOrder = asyncHandler(async (req, res) => {
+  const { reason } = req.body;
+  const order = await Order.findById(req.params.id);
+
+  if (order) {
+    if (order.isCancelled) {
+      res.status(400);
+      throw new Error('Order is already cancelled');
+    }
+    if (order.isDelivered) {
+      res.status(400);
+      throw new Error('Cannot cancel a delivered order');
+    }
+
+    // Restore stock
+    for (const item of order.orderItems) {
+      await Product.findByIdAndUpdate(item.product, {
+        $inc: { countInStock: item.qty },
+      });
+    }
+
+    order.isCancelled = true;
+    order.cancelledAt = Date.now();
+    order.cancelReason = reason || 'Cancelled by user';
 
     const updatedOrder = await order.save();
     res.json(updatedOrder);
@@ -155,6 +189,7 @@ export {
   getOrderById,
   updateOrderToPaid,
   updateOrderToDelivered,
+  cancelOrder,
   getOrders,
   deleteOrder,
 };

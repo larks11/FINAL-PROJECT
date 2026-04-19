@@ -1,4 +1,4 @@
-import { Card } from 'react-bootstrap';
+import { Card, Badge } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import Rating from './Rating';
 
@@ -11,8 +11,23 @@ const Product = ({ product }) => {
         border: 'none',
         boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
         height: '100%',
+        position: 'relative',
       }}
     >
+      {/* SOLD OUT LABEL */}
+      {product.countInStock === 0 && (
+        <div style={{
+          position: 'absolute',
+          top: '12px',
+          left: '12px',
+          zIndex: 10,
+        }}>
+          <Badge bg='danger' style={{ fontSize: '11px', padding: '5px 8px' }}>
+            SOLD OUT
+          </Badge>
+        </div>
+      )}
+
       <Link to={`/product/${product._id}`}>
         <Card.Img
           src={product.image}
@@ -20,6 +35,7 @@ const Product = ({ product }) => {
           style={{
             height: '200px',
             objectFit: 'contain',
+            opacity: product.countInStock === 0 ? 0.6 : 1,
           }}
         />
       </Link>

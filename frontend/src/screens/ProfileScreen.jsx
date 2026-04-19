@@ -1,8 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { Table, Form, Button, Row, Col } from 'react-bootstrap';
+import { useEffect, useState } from 'react';
+import { Table, Form, Button, Row, Col, Badge } from 'react-bootstrap';
 import { useDispatch, useSelector } from 'react-redux';
-import { FaTimes } from 'react-icons/fa';
-
 import { toast } from 'react-toastify';
 import Message from '../components/Message';
 import Loader from '../components/Loader';
@@ -14,15 +12,13 @@ import { Link } from 'react-router-dom';
 const ProfileScreen = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [oldPassword, setOldPassword] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const { userInfo } = useSelector((state) => state.auth);
-
   const { data: orders, isLoading, error } = useGetMyOrdersQuery();
-
-  const [updateProfile, { isLoading: loadingUpdateProfile }] =
-    useProfileMutation();
+  const [updateProfile, { isLoading: loadingUpdateProfile }] = useProfileMutation();
 
   useEffect(() => {
     setName(userInfo.name);
@@ -30,33 +26,41 @@ const ProfileScreen = () => {
   }, [userInfo.email, userInfo.name]);
 
   const dispatch = useDispatch();
+
   const submitHandler = async (e) => {
     e.preventDefault();
-    if (password !== confirmPassword) {
+    if (password && password !== confirmPassword) {
       toast.error('Passwords do not match');
-    } else {
-      try {
-        const res = await updateProfile({
-          // NOTE: here we don't need the _id in the request payload as this is
-          // not used in our controller.
-          // _id: userInfo._id,
-          name,
-          email,
-          password,
-        }).unwrap();
-        dispatch(setCredentials({ ...res }));
-        toast.success('Profile updated successfully');
-      } catch (err) {
-        toast.error(err?.data?.message || err.error);
-      }
+      return;
     }
+    try {
+      const res = await updateProfile({
+        name,
+        email,
+        oldPassword: oldPassword || undefined,
+        password: password || undefined,
+      }).unwrap();
+      dispatch(setCredentials({ ...res }));
+      toast.success('Profile updated successfully');
+      setOldPassword('');
+      setPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      toast.error(err?.data?.message || err.error);
+    }
+  };
+
+  const getOrderStatus = (order) => {
+    if (order.isCancelled) return <Badge bg='danger'>Cancelled</Badge>;
+    if (order.isDelivered) return <Badge bg='success'>Delivered</Badge>;
+    if (order.isPaid) return <Badge bg='info'>Processing</Badge>;
+    return <Badge bg='warning'>Pending</Badge>;
   };
 
   return (
     <Row>
       <Col md={3}>
         <h2>User Profile</h2>
-
         <Form onSubmit={submitHandler}>
           <Form.Group className='my-2' controlId='name'>
             <Form.Label>Name</Form.Label>
@@ -65,7 +69,7 @@ const ProfileScreen = () => {
               placeholder='Enter name'
               value={name}
               onChange={(e) => setName(e.target.value)}
-            ></Form.Control>
+            />
           </Form.Group>
 
           <Form.Group className='my-2' controlId='email'>
@@ -75,27 +79,42 @@ const ProfileScreen = () => {
               placeholder='Enter email'
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-            ></Form.Control>
+            />
+          </Form.Group>
+
+          <hr />
+          <p style={{ fontSize: '13px', color: '#666' }}>
+            Leave password fields blank if you don't want to change it.
+          </p>
+
+          <Form.Group className='my-2' controlId='oldPassword'>
+            <Form.Label>Current Password</Form.Label>
+            <Form.Control
+              type='password'
+              placeholder='Enter current password'
+              value={oldPassword}
+              onChange={(e) => setOldPassword(e.target.value)}
+            />
           </Form.Group>
 
           <Form.Group className='my-2' controlId='password'>
-            <Form.Label>Password</Form.Label>
+            <Form.Label>New Password</Form.Label>
             <Form.Control
               type='password'
-              placeholder='Enter password'
+              placeholder='Enter new password'
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-            ></Form.Control>
+            />
           </Form.Group>
 
           <Form.Group className='my-2' controlId='confirmPassword'>
-            <Form.Label>Confirm Password</Form.Label>
+            <Form.Label>Confirm New Password</Form.Label>
             <Form.Control
               type='password'
-              placeholder='Confirm password'
+              placeholder='Confirm new password'
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-            ></Form.Control>
+            />
           </Form.Group>
 
           <Button type='submit' variant='primary'>
@@ -104,14 +123,13 @@ const ProfileScreen = () => {
           {loadingUpdateProfile && <Loader />}
         </Form>
       </Col>
+
       <Col md={9}>
         <h2>My Orders</h2>
         {isLoading ? (
           <Loader />
         ) : error ? (
-          <Message variant='danger'>
-            {error?.data?.message || error.error}
-          </Message>
+          <Message variant='danger'>{error?.data?.message || error.error}</Message>
         ) : (
           <Table striped hover responsive className='table-sm'>
             <thead>
@@ -119,31 +137,19 @@ const ProfileScreen = () => {
                 <th>ID</th>
                 <th>DATE</th>
                 <th>TOTAL</th>
-                <th>PAID</th>
-                <th>DELIVERED</th>
+                <th>STATUS</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {orders.map((order) => (
-                <tr key={order._id}>
-                  <td>{order._id}</td>
+                <tr key={order._id}
+                  style={{ opacity: order.isCancelled ? 0.6 : 1 }}
+                >
+                  <td style={{ fontSize: '12px' }}>{order._id}</td>
                   <td>{order.createdAt.substring(0, 10)}</td>
-                  <td>{order.totalPrice}</td>
-                  <td>
-                    {order.isPaid ? (
-                      order.paidAt.substring(0, 10)
-                    ) : (
-                      <FaTimes style={{ color: 'red' }} />
-                    )}
-                  </td>
-                  <td>
-                    {order.isDelivered ? (
-                      order.deliveredAt.substring(0, 10)
-                    ) : (
-                      <FaTimes style={{ color: 'red' }} />
-                    )}
-                  </td>
+                  <td>₱{Number(order.totalPrice).toLocaleString('en-PH')}</td>
+                  <td>{getOrderStatus(order)}</td>
                   <td>
                     <Button
                       as={Link}

@@ -26,6 +26,8 @@ const UserListScreen = () => {
     }
   };
 
+
+
   const filteredUsers = users?.filter((user) =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -34,12 +36,9 @@ const UserListScreen = () => {
   return (
     <>
       <Row className='align-items-center mb-3'>
-        <Col>
-          <h1>Users</h1>
-        </Col>
+        <Col><h1>Users</h1></Col>
       </Row>
 
-      {/* SEARCH BAR */}
       <Row className='mb-3'>
         <Col md={6}>
           <InputGroup>
@@ -74,7 +73,7 @@ const UserListScreen = () => {
         <Table striped bordered hover responsive className='table-sm'>
           <thead>
             <tr>
-              <th>ID</th>
+              <th>#</th>
               <th>NAME</th>
               <th>EMAIL</th>
               <th>ADMIN</th>
@@ -83,9 +82,11 @@ const UserListScreen = () => {
           </thead>
           <tbody>
             {filteredUsers.length > 0 ? (
-              filteredUsers.map((user) => (
+              filteredUsers.map((user, index) => (
                 <tr key={user._id}>
-                  <td>{user._id}</td>
+                  <td style={{ fontWeight: 'bold', color: '#0d6efd' }}>
+                    {(index + 1).toString().padStart(3, '0')}
+                  </td>
                   <td>{user.name}</td>
                   <td>
                     <a href={`mailto:${user.email}`}>{user.email}</a>

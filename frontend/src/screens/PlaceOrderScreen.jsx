@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { Button, Row, Col, ListGroup, Image, Card } from 'react-bootstrap';
@@ -9,17 +9,12 @@ import Loader from '../components/Loader';
 import { useCreateOrderMutation } from '../slices/ordersApiSlice';
 import { clearCartItems } from '../slices/cartSlice';
 
-const formatPeso = (amount) => {
-  return new Intl.NumberFormat('en-PH', {
-    style: 'currency',
-    currency: 'PHP',
-  }).format(amount);
-};
+const formatPeso = (amount) =>
+  new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(amount);
 
 const PlaceOrderScreen = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-
   const cart = useSelector((state) => state.cart);
 
   const [createOrder, { isLoading, error }] = useCreateOrderMutation();
@@ -43,7 +38,6 @@ const PlaceOrderScreen = () => {
         taxPrice: cart.taxPrice,
         totalPrice: cart.totalPrice,
       }).unwrap();
-
       dispatch(clearCartItems());
       navigate(`/order/${res._id}`);
     } catch (err) {
@@ -59,8 +53,9 @@ const PlaceOrderScreen = () => {
         <Col md={8}>
           <ListGroup variant='flush'>
 
+            {/* SHIPPING */}
             <ListGroup.Item>
-              <h2>Shipping</h2>
+              <h2>📦 Shipping</h2>
               <p>
                 <strong>Address: </strong>
                 {cart.shippingAddress.address},{' '}
@@ -70,15 +65,9 @@ const PlaceOrderScreen = () => {
               </p>
             </ListGroup.Item>
 
+            {/* ORDER ITEMS */}
             <ListGroup.Item>
-              <h2>Payment Method</h2>
-              <strong>Method: </strong>
-              {cart.paymentMethod}
-            </ListGroup.Item>
-
-            <ListGroup.Item>
-              <h2>Order Items</h2>
-
+              <h2>🛒 Order Items</h2>
               {cart.cartItems.length === 0 ? (
                 <Message>Your cart is empty</Message>
               ) : (
@@ -87,20 +76,11 @@ const PlaceOrderScreen = () => {
                     <ListGroup.Item key={index}>
                       <Row>
                         <Col md={1}>
-                          <Image
-                            src={item.image}
-                            alt={item.name}
-                            fluid
-                            rounded
-                          />
+                          <Image src={item.image} alt={item.name} fluid rounded />
                         </Col>
-
                         <Col>
-                          <Link to={`/product/${item.product}`}>
-                            {item.name}
-                          </Link>
+                          <Link to={`/product/${item.product}`}>{item.name}</Link>
                         </Col>
-
                         <Col md={4}>
                           {item.qty} x {formatPeso(item.price)} ={' '}
                           {formatPeso(item.qty * item.price)}
@@ -111,16 +91,26 @@ const PlaceOrderScreen = () => {
                 </ListGroup>
               )}
             </ListGroup.Item>
-
           </ListGroup>
         </Col>
 
+        {/* ORDER SUMMARY — payment info dinhi ra makita */}
         <Col md={4}>
           <Card>
             <ListGroup variant='flush'>
-
               <ListGroup.Item>
                 <h2>Order Summary</h2>
+              </ListGroup.Item>
+
+              {/* PAYMENT METHOD — sa summary card lang */}
+              <ListGroup.Item style={{
+                backgroundColor: 'rgba(212,175,55,0.06)',
+                borderLeft: '3px solid var(--accent)',
+              }}>
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>Payment Method</p>
+                <strong style={{ color: 'var(--accent)', fontSize: '15px' }}>
+                  💳 {cart.paymentMethod}
+                </strong>
               </ListGroup.Item>
 
               <ListGroup.Item>
@@ -137,43 +127,43 @@ const PlaceOrderScreen = () => {
                 </Row>
               </ListGroup.Item>
 
-              <ListGroup.Item>
+              {/* TAX HIGHLIGHT */}
+              <ListGroup.Item style={{
+                backgroundColor: 'rgba(212,175,55,0.08)',
+                border: '1px solid var(--accent-dark)',
+                borderRadius: '6px',
+              }}>
                 <Row>
-                  <Col>Tax</Col>
-                  <Col>{formatPeso(cart.taxPrice)}</Col>
+                  <Col><strong>Tax (12% VAT) ⚡</strong></Col>
+                  <Col><strong style={{ color: 'var(--accent)' }}>{formatPeso(cart.taxPrice)}</strong></Col>
                 </Row>
               </ListGroup.Item>
 
               <ListGroup.Item>
                 <Row>
-                  <Col>Total</Col>
-                  <Col>
-                    <strong>{formatPeso(cart.totalPrice)}</strong>
-                  </Col>
+                  <Col><strong>Total</strong></Col>
+                  <Col><strong style={{ color: 'var(--accent)', fontSize: '16px' }}>{formatPeso(cart.totalPrice)}</strong></Col>
                 </Row>
               </ListGroup.Item>
 
               {error && (
                 <ListGroup.Item>
-                  <Message variant='danger'>
-                    {error?.data?.message}
-                  </Message>
+                  <Message variant='danger'>{error?.data?.message}</Message>
                 </ListGroup.Item>
               )}
 
               <ListGroup.Item>
                 <Button
                   type='button'
-                  className='btn-success w-100'
+                  className='btn-primary w-100'
                   disabled={cart.cartItems.length === 0}
                   onClick={placeOrderHandler}
+                  style={{ fontWeight: '700', fontSize: '15px' }}
                 >
-                  Place Order
+                  ✅ Place Order
                 </Button>
-
                 {isLoading && <Loader />}
               </ListGroup.Item>
-
             </ListGroup>
           </Card>
         </Col>

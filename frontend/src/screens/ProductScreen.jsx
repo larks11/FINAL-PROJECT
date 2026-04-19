@@ -40,7 +40,6 @@ const ProductScreen = () => {
   const [submitRequest, { isLoading: loadingRequest }] =
     useSubmitRequestMutation();
 
-  // Check if user has purchased this product
   const { data: orderCheck } = useCheckUserOrderQuery(productId, {
     skip: !userInfo || userInfo?.isAdmin,
   });
@@ -135,7 +134,7 @@ const ProductScreen = () => {
               </ListGroup>
             </Col>
 
-            {/* ADD TO CART / REQUEST CARD */}
+            {/* CARD: ADMIN vs USER */}
             <Col md={3}>
               <Card style={{
                 border: 'none',
@@ -173,60 +172,82 @@ const ProductScreen = () => {
                     </Row>
                   </ListGroup.Item>
 
-                  {product.countInStock > 0 && (
-                    <ListGroup.Item>
-                      <Row>
-                        <Col>Qty</Col>
-                        <Col>
-                          <Form.Select
-                            value={qty}
-                            onChange={(e) => setQty(Number(e.target.value))}
-                          >
-                            {[...Array(product.countInStock).keys()].map((x) => (
-                              <option key={x + 1} value={x + 1}>{x + 1}</option>
-                            ))}
-                          </Form.Select>
-                        </Col>
-                      </Row>
-                    </ListGroup.Item>
-                  )}
-
-                  <ListGroup.Item>
-                    <Button
-                      type='button'
-                      className='w-100'
-                      disabled={product.countInStock === 0}
-                      onClick={addToCartHandler}
-                      style={{ backgroundColor: '#0d6efd', border: 'none' }}
-                    >
-                      Add To Cart
-                    </Button>
-                  </ListGroup.Item>
-
-                  {/* REQUEST BUTTON — Out of Stock + logged in user only */}
-                  {product.countInStock === 0 && userInfo && !userInfo.isAdmin && (
+                  {/* ===== ADMIN VIEW ===== */}
+                  {userInfo && userInfo.isAdmin ? (
                     <ListGroup.Item>
                       <Button
                         type='button'
                         className='w-100'
-                        onClick={() => setShowRequestModal(true)}
+                        onClick={() => navigate(`/admin/product/${product._id}/edit`)}
                         style={{
-                          backgroundColor: '#ff6b35',
+                          backgroundColor: '#198754',
                           border: 'none',
                           fontWeight: 'bold',
                         }}
                       >
-                        🔔 Request this Item
+                        ➕ Add Stocks
                       </Button>
                     </ListGroup.Item>
-                  )}
 
-                  {product.countInStock === 0 && !userInfo && (
-                    <ListGroup.Item>
-                      <Message variant='warning'>
-                        <Link to='/login'>Sign in</Link> to request this item
-                      </Message>
-                    </ListGroup.Item>
+                  ) : (
+                    /* ===== USER VIEW ===== */
+                    <>
+                      {product.countInStock > 0 && (
+                        <ListGroup.Item>
+                          <Row>
+                            <Col>Qty</Col>
+                            <Col>
+                              <Form.Select
+                                value={qty}
+                                onChange={(e) => setQty(Number(e.target.value))}
+                              >
+                                {[...Array(product.countInStock).keys()].map((x) => (
+                                  <option key={x + 1} value={x + 1}>{x + 1}</option>
+                                ))}
+                              </Form.Select>
+                            </Col>
+                          </Row>
+                        </ListGroup.Item>
+                      )}
+
+                      <ListGroup.Item>
+                        <Button
+                          type='button'
+                          className='w-100'
+                          disabled={product.countInStock === 0}
+                          onClick={addToCartHandler}
+                          style={{ backgroundColor: '#0d6efd', border: 'none' }}
+                        >
+                          Add To Cart
+                        </Button>
+                      </ListGroup.Item>
+
+                      {/* REQUEST BUTTON — Out of Stock + logged in user only */}
+                      {product.countInStock === 0 && userInfo && (
+                        <ListGroup.Item>
+                          <Button
+                            type='button'
+                            className='w-100'
+                            onClick={() => setShowRequestModal(true)}
+                            style={{
+                              backgroundColor: '#ff6b35',
+                              border: 'none',
+                              fontWeight: 'bold',
+                            }}
+                          >
+                            🔔 Request this Item
+                          </Button>
+                        </ListGroup.Item>
+                      )}
+
+                      {product.countInStock === 0 && !userInfo && (
+                        <ListGroup.Item>
+                          <Message variant='warning'>
+                            <Link to='/login'>Sign in</Link> to request this item
+                          </Message>
+                        </ListGroup.Item>
+                      )}
+                    </>
                   )}
 
                 </ListGroup>
@@ -253,21 +274,18 @@ const ProductScreen = () => {
                   <h4>Write a Customer Review</h4>
                   {loadingProductReview && <Loader />}
 
-                  {/* CASE 1: Not logged in */}
                   {!userInfo && (
                     <Message>
                       Please <Link to='/login'>sign in</Link> to write a review
                     </Message>
                   )}
 
-                  {/* CASE 2: Logged in but never ordered */}
                   {userInfo && !userInfo.isAdmin && hasPurchased === false && (
                     <Message variant='warning'>
                       🛒 You can only review products you have ordered.
                     </Message>
                   )}
 
-                  {/* CASE 3: Logged in + has ordered = show form */}
                   {userInfo && !userInfo.isAdmin && hasPurchased === true && (
                     <Form onSubmit={submitHandler}>
                       <Form.Group className='my-2'>
