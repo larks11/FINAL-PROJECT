@@ -40,6 +40,7 @@ const createProduct = asyncHandler(async (req, res) => {
     countInStock: 0,
     numReviews: 0,
     description: 'Sample description',
+    colorVariants: [],
   });
 
   const createdProduct = await product.save();
@@ -47,19 +48,28 @@ const createProduct = asyncHandler(async (req, res) => {
 });
 
 const updateProduct = asyncHandler(async (req, res) => {
-  const { name, price, description, image, brand, category, countInStock } =
-    req.body;
+  const {
+    name,
+    price,
+    description,
+    image,
+    brand,
+    category,
+    countInStock,
+    colorVariants,   // ← bag-o
+  } = req.body;
 
   const product = await Product.findById(req.params.id);
 
   if (product) {
-    product.name = name;
-    product.price = price;
-    product.description = description;
-    product.image = image;
-    product.brand = brand;
-    product.category = category;
+    product.name         = name;
+    product.price        = price;
+    product.description  = description;
+    product.image        = image;
+    product.brand        = brand;
+    product.category     = category;
     product.countInStock = countInStock;
+    product.colorVariants = colorVariants || [];   // ← bag-o
 
     const updatedProduct = await product.save();
 

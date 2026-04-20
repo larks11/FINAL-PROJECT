@@ -18,7 +18,6 @@ const PaymentScreen = () => {
   }, [navigate, shippingAddress]);
 
   const [paymentMethod, setPaymentMethod] = useState('PayPal');
-
   const dispatch = useDispatch();
 
   const submitHandler = (e) => {
@@ -35,19 +34,19 @@ const PaymentScreen = () => {
         <Form.Group>
           <Form.Label as='legend'>Select Method</Form.Label>
           <Col>
+            {/* PayPal lang — e-hawa ang "or Credit Card" */}
             <Form.Check
               className='my-2'
               type='radio'
-              label='PayPal or Credit Card'
+              label='PayPal'
               id='PayPal'
               name='paymentMethod'
               value='PayPal'
-              checked
+              checked={paymentMethod === 'PayPal'}
               onChange={(e) => setPaymentMethod(e.target.value)}
-            ></Form.Check>
+            />
           </Col>
         </Form.Group>
-
         <Button type='submit' variant='primary'>
           Continue
         </Button>

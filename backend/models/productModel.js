@@ -64,6 +64,13 @@ const productSchema = mongoose.Schema(
       required: true,
       default: 0,
     },
+    colorVariants: [
+      {
+        colorName: { type: String, required: true },
+        colorHex:  { type: String, required: true },
+        image:     { type: String, required: true },
+      },
+    ],
   },
   {
     timestamps: true,

@@ -27,16 +27,20 @@ const PlaceOrderScreen = () => {
     }
   }, [cart.paymentMethod, cart.shippingAddress.address, navigate]);
 
+  // Compute shipping fee as 10% of items price
+  const shippingFee = Number((cart.itemsPrice * 0.10).toFixed(2));
+  const totalPrice  = Number((Number(cart.itemsPrice) + shippingFee).toFixed(2));
+
   const placeOrderHandler = async () => {
     try {
       const res = await createOrder({
-        orderItems: cart.cartItems,
+        orderItems:      cart.cartItems,
         shippingAddress: cart.shippingAddress,
-        paymentMethod: cart.paymentMethod,
-        itemsPrice: cart.itemsPrice,
-        shippingPrice: cart.shippingPrice,
-        taxPrice: cart.taxPrice,
-        totalPrice: cart.totalPrice,
+        paymentMethod:   cart.paymentMethod,
+        itemsPrice:      cart.itemsPrice,
+        shippingPrice:   shippingFee,
+        taxPrice:        0,
+        totalPrice:      totalPrice,
       }).unwrap();
       dispatch(clearCartItems());
       navigate(`/order/${res._id}`);
@@ -94,7 +98,7 @@ const PlaceOrderScreen = () => {
           </ListGroup>
         </Col>
 
-        {/* ORDER SUMMARY — payment info dinhi ra makita */}
+        {/* ORDER SUMMARY */}
         <Col md={4}>
           <Card>
             <ListGroup variant='flush'>
@@ -102,7 +106,7 @@ const PlaceOrderScreen = () => {
                 <h2>Order Summary</h2>
               </ListGroup.Item>
 
-              {/* PAYMENT METHOD — sa summary card lang */}
+              {/* PAYMENT METHOD */}
               <ListGroup.Item style={{
                 backgroundColor: 'rgba(212,175,55,0.06)',
                 borderLeft: '3px solid var(--accent)',
@@ -113,6 +117,7 @@ const PlaceOrderScreen = () => {
                 </strong>
               </ListGroup.Item>
 
+              {/* ITEMS */}
               <ListGroup.Item>
                 <Row>
                   <Col>Items</Col>
@@ -120,29 +125,31 @@ const PlaceOrderScreen = () => {
                 </Row>
               </ListGroup.Item>
 
-              <ListGroup.Item>
-                <Row>
-                  <Col>Shipping</Col>
-                  <Col>{formatPeso(cart.shippingPrice)}</Col>
-                </Row>
-              </ListGroup.Item>
-
-              {/* TAX HIGHLIGHT */}
+              {/* SHIPPING FEE 10% */}
               <ListGroup.Item style={{
                 backgroundColor: 'rgba(212,175,55,0.08)',
                 border: '1px solid var(--accent-dark)',
                 borderRadius: '6px',
               }}>
                 <Row>
-                  <Col><strong>Tax (12% VAT) ⚡</strong></Col>
-                  <Col><strong style={{ color: 'var(--accent)' }}>{formatPeso(cart.taxPrice)}</strong></Col>
+                  <Col><strong>Shipping Fee (10%) 🚚</strong></Col>
+                  <Col>
+                    <strong style={{ color: 'var(--accent)' }}>
+                      {formatPeso(shippingFee)}
+                    </strong>
+                  </Col>
                 </Row>
               </ListGroup.Item>
 
+              {/* TOTAL */}
               <ListGroup.Item>
                 <Row>
                   <Col><strong>Total</strong></Col>
-                  <Col><strong style={{ color: 'var(--accent)', fontSize: '16px' }}>{formatPeso(cart.totalPrice)}</strong></Col>
+                  <Col>
+                    <strong style={{ color: 'var(--accent)', fontSize: '16px' }}>
+                      {formatPeso(totalPrice)}
+                    </strong>
+                  </Col>
                 </Row>
               </ListGroup.Item>
 
