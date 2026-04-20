@@ -10,15 +10,21 @@ const cartSlice = createSlice({
   initialState,
   reducers: {
     addToCart: (state, action) => {
-      // NOTE: we don't need user, rating, numReviews or reviews
-      // in the cart
       const { user, rating, numReviews, reviews, ...item } = action.payload;
 
-      const existItem = state.cartItems.find((x) => x._id === item._id);
+      // ✅ Match per product ID + selected color
+      const existItem = state.cartItems.find(
+        (x) =>
+          x._id === item._id &&
+          (x.selectedColorName || 'Default') === (item.selectedColorName || 'Default')
+      );
 
       if (existItem) {
         state.cartItems = state.cartItems.map((x) =>
-          x._id === existItem._id ? item : x
+          x._id === existItem._id &&
+          (x.selectedColorName || 'Default') === (item.selectedColorName || 'Default')
+            ? item
+            : x
         );
       } else {
         state.cartItems = [...state.cartItems, item];
@@ -42,8 +48,6 @@ const cartSlice = createSlice({
       state.cartItems = [];
       localStorage.setItem('cart', JSON.stringify(state));
     },
-    // NOTE: here we need to reset state for when a user logs out so the next
-    // user doesn't inherit the previous users cart and shipping
     resetCart: (state) => (state = initialState),
   },
 });

@@ -27,8 +27,11 @@ const PlaceOrderScreen = () => {
     }
   }, [cart.paymentMethod, cart.shippingAddress.address, navigate]);
 
-  // Compute shipping fee as 10% of items price
-  const shippingFee = Number((cart.itemsPrice * 0.10).toFixed(2));
+  // Total qty of all items
+  const totalQty = cart.cartItems.reduce((acc, item) => acc + item.qty, 0);
+
+  // Shipping fee = 1% of itemsPrice per qty
+  const shippingFee = Number((cart.itemsPrice * 0.01 * totalQty).toFixed(2));
   const totalPrice  = Number((Number(cart.itemsPrice) + shippingFee).toFixed(2));
 
   const placeOrderHandler = async () => {
@@ -111,7 +114,9 @@ const PlaceOrderScreen = () => {
                 backgroundColor: 'rgba(212,175,55,0.06)',
                 borderLeft: '3px solid var(--accent)',
               }}>
-                <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>Payment Method</p>
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>
+                  Payment Method
+                </p>
                 <strong style={{ color: 'var(--accent)', fontSize: '15px' }}>
                   💳 {cart.paymentMethod}
                 </strong>
@@ -120,19 +125,24 @@ const PlaceOrderScreen = () => {
               {/* ITEMS */}
               <ListGroup.Item>
                 <Row>
-                  <Col>Items</Col>
+                  <Col>Items ({totalQty} pcs)</Col>
                   <Col>{formatPeso(cart.itemsPrice)}</Col>
                 </Row>
               </ListGroup.Item>
 
-              {/* SHIPPING FEE 10% */}
+              {/* SHIPPING FEE 1% x qty */}
               <ListGroup.Item style={{
                 backgroundColor: 'rgba(212,175,55,0.08)',
                 border: '1px solid var(--accent-dark)',
                 borderRadius: '6px',
               }}>
                 <Row>
-                  <Col><strong>Shipping Fee (10%) 🚚</strong></Col>
+                  <Col>
+                    <strong>Shipping Fee 🚚</strong>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                      1% × {totalQty} item{totalQty > 1 ? 's' : ''}
+                    </div>
+                  </Col>
                   <Col>
                     <strong style={{ color: 'var(--accent)' }}>
                       {formatPeso(shippingFee)}

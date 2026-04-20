@@ -20,7 +20,6 @@ const THEMES = [
   { id: 'emerald-black', label: '🟢 Emerald & Black', dot: '#2ecc71', bg: '#010a05' },
 ];
 
-// ===== THEME DROPDOWN COMPONENT =====
 const ThemeDropdown = ({ currentTheme, setCurrentTheme }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -57,25 +56,17 @@ const ThemeDropdown = ({ currentTheme, setCurrentTheme }) => {
 
       {open && (
         <div style={{
-          position: 'absolute',
-          top: '110%',
-          right: 0,
+          position: 'absolute', top: '110%', right: 0,
           backgroundColor: 'var(--bg-card)',
           border: '1px solid var(--accent-dark)',
-          borderRadius: '10px',
-          padding: '10px',
-          zIndex: 9999,
-          minWidth: '190px',
+          borderRadius: '10px', padding: '10px',
+          zIndex: 9999, minWidth: '190px',
           boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
         }}>
           <p style={{
-            color: 'var(--accent)',
-            fontSize: '10px',
-            fontWeight: '700',
-            letterSpacing: '1.5px',
-            textTransform: 'uppercase',
-            marginBottom: '8px',
-            paddingLeft: '6px',
+            color: 'var(--accent)', fontSize: '10px', fontWeight: '700',
+            letterSpacing: '1.5px', textTransform: 'uppercase',
+            marginBottom: '8px', paddingLeft: '6px',
           }}>
             Select Theme
           </p>
@@ -87,37 +78,23 @@ const ThemeDropdown = ({ currentTheme, setCurrentTheme }) => {
                 key={theme.id}
                 onClick={() => { setCurrentTheme(theme.id); setOpen(false); }}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '8px 10px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  padding: '8px 10px', borderRadius: '6px', cursor: 'pointer',
                   backgroundColor: isActive ? 'var(--accent-dark)' : 'transparent',
                   color: isActive ? 'var(--btn-text)' : 'var(--text-main)',
                   fontWeight: isActive ? '700' : '400',
-                  fontSize: '13px',
-                  transition: 'background 0.2s',
+                  fontSize: '13px', transition: 'background 0.2s',
                 }}
-                onMouseEnter={(e) => {
-                  if (!isActive) e.currentTarget.style.backgroundColor = 'var(--border)';
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
-                }}
+                onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = 'var(--border)'; }}
+                onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
               >
                 <div style={{
-                  width: '14px',
-                  height: '14px',
-                  borderRadius: '50%',
+                  width: '14px', height: '14px', borderRadius: '50%',
                   background: `linear-gradient(135deg, ${theme.bg} 50%, ${theme.dot} 50%)`,
-                  border: '1px solid #666',
-                  flexShrink: 0,
+                  border: '1px solid #666', flexShrink: 0,
                 }} />
                 {theme.label}
-                {isActive && (
-                  <span style={{ marginLeft: 'auto', fontSize: '11px' }}>✓</span>
-                )}
+                {isActive && <span style={{ marginLeft: 'auto', fontSize: '11px' }}>✓</span>}
               </div>
             );
           })}
@@ -127,7 +104,6 @@ const ThemeDropdown = ({ currentTheme, setCurrentTheme }) => {
   );
 };
 
-// ===== MAIN HEADER =====
 const Header = () => {
   const { cartItems } = useSelector((state) => state.cart);
   const { userInfo } = useSelector((state) => state.auth);
@@ -149,14 +125,12 @@ const Header = () => {
   }, [currentTheme]);
 
   const { data: unreadData } = useGetUnreadCountQuery(
-    undefined,
-    { skip: !userInfo?.isAdmin, pollingInterval: 30000 }
+    undefined, { skip: !userInfo?.isAdmin, pollingInterval: 30000 }
   );
   const unreadCount = unreadData?.count || 0;
 
   const { data: myRequests } = useGetMyRequestsQuery(
-    undefined,
-    { skip: !userInfo || userInfo?.isAdmin, pollingInterval: 30000 }
+    undefined, { skip: !userInfo || userInfo?.isAdmin, pollingInterval: 30000 }
   );
   const newRepliesCount = myRequests?.filter((r) => r.hasNewReply).length || 0;
 
@@ -190,7 +164,6 @@ const Header = () => {
             <Nav className='ms-auto align-items-center' style={{ gap: '6px' }}>
               <SearchBox />
 
-              {/* CART */}
               {userInfo && !userInfo.isAdmin && (
                 <Nav.Link as={Link} to='/cart'>
                   <FaShoppingCart /> Cart
@@ -202,7 +175,6 @@ const Header = () => {
                 </Nav.Link>
               )}
 
-              {/* USER BELL */}
               {userInfo && !userInfo.isAdmin && (
                 <Nav.Link as={Link} to='/my-requests' style={{ position: 'relative' }}>
                   <FaBell style={{ fontSize: '18px', color: newRepliesCount > 0 ? '#ff6b35' : 'var(--text-muted)' }} />
@@ -214,17 +186,13 @@ const Header = () => {
                 </Nav.Link>
               )}
 
-              {/* ===== NOT LOGGED IN ===== */}
               {!userInfo && (
                 <>
-                  <Nav.Link as={Link} to='/login'>
-                    <FaUser /> Sign In
-                  </Nav.Link>
+                  <Nav.Link as={Link} to='/login'><FaUser /> Sign In</Nav.Link>
                   <ThemeDropdown currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} />
                 </>
               )}
 
-              {/* ===== LOGGED IN USER (not admin) ===== */}
               {userInfo && !userInfo.isAdmin && (
                 <>
                   <NavDropdown title={userInfo.name} id='username'>
@@ -232,10 +200,10 @@ const Header = () => {
                       Profile
                     </NavDropdown.Item>
 
-                    {/* MY ORDERS — bag-o, tapad sa My Requests */}
+                    {/* ✅ MY PURCHASE — gibag-o gikan "My Orders" */}
                     <NavDropdown.Item as={Link} to='/myorders'>
                       <FaBoxOpen style={{ marginRight: '6px' }} />
-                      My Orders
+                      My Purchase
                     </NavDropdown.Item>
 
                     <NavDropdown.Item as={Link} to='/my-requests'>
@@ -256,7 +224,6 @@ const Header = () => {
                 </>
               )}
 
-              {/* ===== ADMIN ===== */}
               {userInfo && userInfo.isAdmin && (
                 <>
                   <Nav.Link as={Link} to='/admin/requests' style={{ position: 'relative' }}>
@@ -290,7 +257,6 @@ const Header = () => {
                   <ThemeDropdown currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} />
                 </>
               )}
-
             </Nav>
           </Navbar.Collapse>
         </Container>
