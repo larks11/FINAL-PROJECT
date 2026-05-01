@@ -22,7 +22,7 @@ const ProductCarousel = () => {
     >
       {products.map((product) => (
         <Carousel.Item key={product._id} style={{ padding: '20px' }}>
-          <Link to={`/product/${product._id}`}>
+          <Link to={`/product/₱{product._id}`}>
             <Image
               src={product.image}
               alt={product.name}
@@ -36,7 +36,7 @@ const ProductCarousel = () => {
 
             <Carousel.Caption className='carousel-caption'>
               <h4 className='text-white'>
-                {product.name} (${product.price})
+                {product.name} (₱{product.price.toLocaleString('en-PH')})
               </h4>
             </Carousel.Caption>
           </Link>
