@@ -33,7 +33,6 @@ const OrderScreen = () => {
 
   const { data: order, isLoading, error, refetch } = useGetOrderDetailsQuery(orderId);
   const [cancelOrder, { isLoading: loadingCancel }] = useCancelOrderMutation();
-
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
 
@@ -88,7 +87,12 @@ const OrderScreen = () => {
       { label: 'Transport – Tacloban Distribution Hub', scheduledTime: addHours(created, stepOffsets[3]), done: now >= addHours(created, stepOffsets[3]) },
       { label: `Arrived – ${order.shippingAddress.city} Delivery Hub`, scheduledTime: addHours(created, stepOffsets[4]), done: now >= addHours(created, stepOffsets[4]) },
       { label: `Out for Delivery – ${order.shippingAddress.city}`, scheduledTime: addHours(created, stepOffsets[5]), done: now >= addHours(created, stepOffsets[5]) },
-      { label: `Delivered – ${order.shippingAddress.address}, ${order.shippingAddress.city}`, scheduledTime: addHours(created, stepOffsets[6]), done: order.isDelivered || now >= addHours(created, stepOffsets[6]), final: true },
+      {
+        label: `Delivered – ${order.shippingAddress.address}, ${order.shippingAddress.city}`,
+        scheduledTime: addHours(created, stepOffsets[6]),
+        done: order.isDelivered || now >= addHours(created, stepOffsets[6]),
+        final: true,
+      },
     ];
 
     let lastReached = -1;
@@ -109,12 +113,10 @@ const OrderScreen = () => {
     return d.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' });
   };
 
-  // ✅ CANCEL allowed sa Step 0 lang (Order Created) — kung nag-move na, dili na pwede
   const canCancel = (order) => {
     if (order.isCancelled || order.isDelivered || userInfo?.isAdmin) return false;
     const steps = getDeliverySteps(order);
     const currentIndex = steps.findIndex((s) => s.current);
-    // Step 0 = Order Created lang ang pwede mag-cancel
     return currentIndex <= 0;
   };
 
@@ -124,8 +126,11 @@ const OrderScreen = () => {
     <Message variant='danger'>{error?.data?.message}</Message>
   ) : (
     <>
-      <h1>Order Tracking</h1>
+      <h1 style={{ color: 'var(--accent)', fontWeight: '800', marginBottom: '20px' }}>
+        Order Tracking
+      </h1>
 
+      {/* CANCELLED BANNER */}
       {order.isCancelled && (
         <Message variant='danger'>
           ❌ This order was cancelled on{' '}
@@ -134,74 +139,114 @@ const OrderScreen = () => {
         </Message>
       )}
 
+      {/* ESTIMATED DELIVERY BANNER */}
       {!order.isCancelled && !order.isDelivered && (
         <div style={{
-          backgroundColor: '#fff8e1',
-          border: '1px solid #f0ad4e',
+          backgroundColor: 'rgba(212,175,55,0.08)',
+          border: '1px solid var(--accent-dark)',
           borderRadius: '10px',
           padding: '12px 18px',
           marginBottom: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
+          display: 'flex', alignItems: 'center', gap: '10px',
         }}>
           <span style={{ fontSize: '22px' }}>🚚</span>
           <div>
-            <p style={{ margin: 0, fontSize: '12px', color: '#666' }}>Estimated Delivery Date</p>
-            <strong style={{ color: '#e65100', fontSize: '15px' }}>
+            <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>
+              Estimated Delivery Date
+            </p>
+            <strong style={{ color: 'var(--accent)', fontSize: '15px' }}>
               {getEstimatedDelivery(order.createdAt, order._id)}
             </strong>
           </div>
         </div>
       )}
 
-      {/* DELIVERY PROGRESS — Shopee-style */}
+      {/* DELIVERY PROGRESS */}
       <Card className='mb-4'>
         <Card.Body>
-          <h4 style={{ marginBottom: '20px' }}>📦 Delivery Progress</h4>
+          <h4 style={{ color: 'var(--accent)', marginBottom: '24px', fontWeight: '700' }}>
+            📦 Delivery Progress
+          </h4>
+
           <div style={{ position: 'relative', paddingLeft: '28px' }}>
+            {/* Vertical line */}
             <div style={{
-              position: 'absolute', left: '7px', top: '8px', bottom: '8px',
-              width: '2px', backgroundColor: '#dee2e6',
+              position: 'absolute',
+              left: '6px', top: '8px', bottom: '8px',
+              width: '2px',
+              backgroundColor: 'var(--border)',
+              zIndex: 0,
             }} />
 
             {getDeliverySteps(order).map((step, i) => (
-              <div key={i} style={{ position: 'relative', marginBottom: '20px', display: 'flex', flexDirection: 'column' }}>
+              <div key={i} style={{
+                position: 'relative',
+                marginBottom: '22px',
+                display: 'flex',
+                flexDirection: 'column',
+              }}>
+                {/* Circle dot only — no big highlight */}
                 <div style={{
-                  position: 'absolute', left: '-22px', top: '4px',
-                  width: '14px', height: '14px', borderRadius: '50%',
-                  backgroundColor: step.cancelled ? '#e74c3c' : step.current ? '#f0ad4e' : step.done ? (step.final ? '#28a745' : '#0d6efd') : '#dee2e6',
-                  border: step.current ? '2px solid #ffc107' : '2px solid transparent',
+                  position: 'absolute',
+                  left: '-22px', top: '3px',
+                  width: '14px', height: '14px',
+                  borderRadius: '50%',
+                  backgroundColor: step.cancelled
+                    ? '#e74c3c'
+                    : step.current
+                    ? 'var(--accent)'
+                    : step.done
+                    ? (step.final ? '#2ecc71' : 'var(--accent-dark)')
+                    : 'var(--bg-soft)',
+                  border: step.current
+                    ? '2px solid var(--accent-light)'
+                    : step.done
+                    ? '2px solid transparent'
+                    : '2px solid var(--border)',
                   zIndex: 1,
-                  boxShadow: step.current ? '0 0 8px #ffc107' : 'none',
+                  boxShadow: step.current ? '0 0 8px var(--accent)' : 'none',
+                  transition: 'all 0.3s',
                 }} />
 
-                <div style={{
-                  padding: step.current ? '8px 12px' : '2px 4px',
-                  borderRadius: '8px',
-                  backgroundColor: step.current ? '#e65100' : 'transparent',
-                  border: step.current ? '1px solid #bf360c' : '1px solid transparent',
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                {/* Text content — no background highlight */}
+                <div style={{ paddingLeft: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{
                       fontWeight: step.current || (step.final && step.done) ? '700' : '400',
-                      color: step.cancelled ? '#e74c3c' : step.current ? '#ffffff' : step.done ? (step.final ? '#28a745' : undefined) : '#adb5bd',
+                      color: step.cancelled
+                        ? '#e74c3c'
+                        : step.current
+                        ? 'var(--accent)'
+                        : step.done
+                        ? (step.final ? '#2ecc71' : 'var(--text-main)')
+                        : 'var(--text-muted)',
                       fontSize: step.current ? '14px' : '13px',
+                      opacity: !step.done && !step.current ? 0.45 : 1,
                     }}>
                       {step.label}
                     </span>
                     {step.current && (
                       <span style={{
-                        fontSize: '10px', backgroundColor: '#ffffff', color: '#e65100',
-                        padding: '2px 8px', borderRadius: '10px', fontWeight: '700',
-                        whiteSpace: 'nowrap', marginLeft: '8px',
+                        fontSize: '10px',
+                        backgroundColor: 'var(--accent)',
+                        color: 'var(--btn-text)',
+                        padding: '2px 8px',
+                        borderRadius: '10px',
+                        fontWeight: '700',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
                       }}>
                         Current
                       </span>
                     )}
                   </div>
+
                   {(step.done || step.current) && (
-                    <div style={{ fontSize: '11px', color: step.current ? '#ffe0b2' : '#888', marginTop: '2px' }}>
+                    <div style={{
+                      fontSize: '11px',
+                      color: 'var(--text-muted)',
+                      marginTop: '2px',
+                    }}>
                       🕐 {step.time}
                     </div>
                   )}
@@ -215,6 +260,8 @@ const OrderScreen = () => {
       <Row>
         <Col md={8}>
           <ListGroup variant='flush'>
+
+            {/* SHIPPING */}
             <ListGroup.Item>
               <h2>Shipping</h2>
               <p><strong>Name: </strong>{order.user.name}</p>
@@ -227,26 +274,40 @@ const OrderScreen = () => {
               {order.isCancelled ? (
                 <Message variant='danger'>Order Cancelled ❌</Message>
               ) : order.isDelivered ? (
-                <Message variant='success'>✅ Delivered on {new Date(order.deliveredAt).toLocaleDateString('en-PH')}</Message>
+                <Message variant='success'>
+                  ✅ Delivered on {new Date(order.deliveredAt).toLocaleDateString('en-PH')}
+                </Message>
               ) : (
                 <Message variant='warning'>Not Yet Delivered</Message>
               )}
             </ListGroup.Item>
 
+            {/* PAYMENT */}
             <ListGroup.Item>
               <h2>Payment Information</h2>
               <p><strong>Method: </strong>{order.paymentMethod}</p>
               <p><strong>Items: </strong>{formatPeso(order.itemsPrice)}</p>
               <p>
                 <strong>Shipping Fee (1%): </strong>
-                <span style={{ color: '#e65100', fontWeight: '700' }}>{formatPeso(order.shippingPrice)}</span>
+                <span style={{ color: 'var(--accent)', fontWeight: '700' }}>
+                  {formatPeso(order.shippingPrice)}
+                </span>
               </p>
-              <p style={{ fontSize: '16px', fontWeight: '700', color: '#0d6efd', marginTop: '8px', borderTop: '1px solid #dee2e6', paddingTop: '8px' }}>
+              <p style={{
+                fontSize: '16px', fontWeight: '700',
+                color: 'var(--accent)', marginTop: '8px',
+                borderTop: '1px solid var(--border)', paddingTop: '8px',
+              }}>
                 Total: {formatPeso(order.totalPrice)}
               </p>
-              {order.isPaid ? <Message variant='success'>Paid ✔</Message> : <Message variant='warning'>Not Paid</Message>}
+              {order.isPaid ? (
+                <Message variant='success'>Paid ✔</Message>
+              ) : (
+                <Message variant='warning'>Not Paid</Message>
+              )}
             </ListGroup.Item>
 
+            {/* ORDER ITEMS */}
             <ListGroup.Item>
               <h2>Order Items</h2>
               {order.orderItems.length === 0 ? (
@@ -256,9 +317,15 @@ const OrderScreen = () => {
                   {order.orderItems.map((item, index) => (
                     <ListGroup.Item key={index}>
                       <Row>
-                        <Col md={1}><Image src={item.image} alt={item.name} fluid rounded /></Col>
-                        <Col><Link to={`/product/${item.product}`}>{item.name}</Link></Col>
-                        <Col md={4}>{item.qty} x {formatPeso(item.price)} = {formatPeso(item.qty * item.price)}</Col>
+                        <Col md={1}>
+                          <Image src={item.image} alt={item.name} fluid rounded />
+                        </Col>
+                        <Col>
+                          <Link to={`/product/${item.product}`}>{item.name}</Link>
+                        </Col>
+                        <Col md={4}>
+                          {item.qty} x {formatPeso(item.price)} = {formatPeso(item.qty * item.price)}
+                        </Col>
                       </Row>
                     </ListGroup.Item>
                   ))}
@@ -268,61 +335,85 @@ const OrderScreen = () => {
           </ListGroup>
         </Col>
 
+        {/* ORDER SUMMARY */}
         <Col md={4}>
           <Card>
             <ListGroup variant='flush'>
-              <ListGroup.Item><h2>Order Summary</h2></ListGroup.Item>
+              <ListGroup.Item>
+                <h2>Order Summary</h2>
+              </ListGroup.Item>
+
               <ListGroup.Item>
                 <Row>
                   <Col>Items</Col>
                   <Col>{formatPeso(order.itemsPrice)}</Col>
                 </Row>
               </ListGroup.Item>
-              <ListGroup.Item style={{ backgroundColor: '#fff8e1' }}>
+
+              <ListGroup.Item style={{
+                backgroundColor: 'rgba(212,175,55,0.08)',
+                border: '1px solid var(--accent-dark)',
+                borderRadius: '6px',
+              }}>
                 <Row>
                   <Col><strong>Shipping Fee (1%) 🚚</strong></Col>
-                  <Col><strong style={{ color: '#e65100' }}>{formatPeso(order.shippingPrice)}</strong></Col>
+                  <Col>
+                    <strong style={{ color: 'var(--accent)' }}>
+                      {formatPeso(order.shippingPrice)}
+                    </strong>
+                  </Col>
                 </Row>
               </ListGroup.Item>
+
               <ListGroup.Item>
                 <Row>
                   <Col><strong>Total</strong></Col>
-                  <Col><strong style={{ color: '#0d6efd', fontSize: '16px' }}>{formatPeso(order.totalPrice)}</strong></Col>
+                  <Col>
+                    <strong style={{ color: 'var(--accent)', fontSize: '16px' }}>
+                      {formatPeso(order.totalPrice)}
+                    </strong>
+                  </Col>
                 </Row>
               </ListGroup.Item>
+
               <ListGroup.Item>
                 {order.isCancelled ? (
                   <Message variant='danger'>Order Cancelled ❌</Message>
                 ) : (
                   <>
                     <Message variant='success'>PAYMENT COMPLETED ✔</Message>
-                    {order.isDelivered && <Message variant='success'>DELIVERY COMPLETED ✔</Message>}
+                    {order.isDelivered && (
+                      <Message variant='success'>DELIVERY COMPLETED ✔</Message>
+                    )}
                   </>
                 )}
               </ListGroup.Item>
 
-              {/* ✅ CANCEL — Step 0 lang (Order Created), kung nag-move na = hidden */}
+              {/* CANCEL BUTTON — Step 0 lang */}
               {canCancel(order) && (
                 <ListGroup.Item>
                   <Button variant='danger' className='w-100' onClick={() => setShowCancelModal(true)}>
                     Cancel Order
                   </Button>
-                  <small style={{ color: '#888', fontSize: '11px', display: 'block', marginTop: '4px', textAlign: 'center' }}>
+                  <small style={{
+                    color: 'var(--text-muted)', fontSize: '11px',
+                    display: 'block', marginTop: '4px', textAlign: 'center',
+                  }}>
                     To cancel, please contact CELLCOM
                   </small>
                 </ListGroup.Item>
               )}
 
-              {/* ✅ Kung nag-move na ang tracking, show notice */}
+              {/* IN TRANSIT NOTICE */}
               {!order.isCancelled && !order.isDelivered && !canCancel(order) && !userInfo?.isAdmin && (
                 <ListGroup.Item>
                   <div style={{
-                    backgroundColor: '#fff3cd',
-                    border: '1px solid #ffc107',
+                    backgroundColor: 'rgba(212,175,55,0.08)',
+                    border: '1px solid var(--accent-dark)',
                     borderRadius: '8px',
                     padding: '10px 12px',
                     fontSize: '12px',
-                    color: '#856404',
+                    color: 'var(--accent)',
                     textAlign: 'center',
                   }}>
                     ⚠️ Order is already in transit.<br />
@@ -335,6 +426,7 @@ const OrderScreen = () => {
         </Col>
       </Row>
 
+      {/* CANCEL MODAL */}
       <Modal show={showCancelModal} onHide={() => setShowCancelModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>Cancel Order</Modal.Title>
@@ -354,7 +446,9 @@ const OrderScreen = () => {
           </Form.Group>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant='secondary' onClick={() => setShowCancelModal(false)}>Keep Order</Button>
+          <Button variant='secondary' onClick={() => setShowCancelModal(false)}>
+            Keep Order
+          </Button>
           <Button variant='danger' onClick={handleCancel} disabled={loadingCancel}>
             {loadingCancel ? 'Cancelling...' : 'Confirm Cancel'}
           </Button>

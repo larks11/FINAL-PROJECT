@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useGetProductsQuery } from '../slices/productsApiSlice';
-import { Link } from 'react-router-dom';
 import Product from '../components/Product';
 import Loader from '../components/Loader';
 import Message from '../components/Message';
@@ -11,11 +10,7 @@ import Meta from '../components/Meta';
 
 const HomeScreen = () => {
   const { pageNumber, keyword } = useParams();
-
-  const { data, isLoading, error } = useGetProductsQuery({
-    keyword,
-    pageNumber,
-  });
+  const { data, isLoading, error } = useGetProductsQuery({ keyword, pageNumber });
 
   const groupByCategory = (products) => {
     return products.reduce((groups, product) => {
@@ -26,45 +21,102 @@ const HomeScreen = () => {
     }, {});
   };
 
+  const categoryIcons = {
+    PHONES: '📱',
+    LAPTOP: '💻',
+    TABLET: '📟',
+    ACCESSORIES: '🎧',
+    Others: '📦',
+  };
+
   return (
     <>
       {!keyword ? (
         <ProductCarousel />
       ) : (
-        <Link to='/' className='btn btn-light mb-4'>
-          Go Back
+        <Link
+          to='/'
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            color: 'var(--accent)',
+            fontWeight: '600',
+            marginBottom: '20px',
+            textDecoration: 'none',
+            fontSize: '14px',
+          }}
+        >
+          ← Go Back
         </Link>
       )}
 
       {isLoading ? (
         <Loader />
       ) : error ? (
-        <Message variant='danger'>
-          {error?.data?.message || error.error}
-        </Message>
+        <Message variant='danger'>{error?.data?.message || error.error}</Message>
       ) : (
         <>
           <Meta />
-          <h1 className='neon-text text-center my-4'>Latest Products</h1>
 
-          {Object.entries(groupByCategory(data.products)).map(
-            ([category, products]) => (
-              <div key={category} className='mb-5'>
-                <h4
-                  style={{
-                    fontWeight: 'bold',
-                    borderLeft: '4px solid #0d6efd',
-                    paddingLeft: '10px',
-                    marginBottom: '16px',
-                    color: '#333',
-                  }}
-                >
+          {/* SECTION HEADER */}
+          <div style={{ textAlign: 'center', margin: '40px 0 32px' }}>
+            <h1 style={{
+              color: 'var(--accent)',
+              fontWeight: '800',
+              fontSize: '28px',
+              letterSpacing: '2px',
+              textTransform: 'uppercase',
+              marginBottom: '8px',
+            }}>
+              Latest Products
+            </h1>
+            <div style={{
+              width: '60px',
+              height: '3px',
+              backgroundColor: 'var(--accent)',
+              margin: '0 auto',
+              borderRadius: '2px',
+            }} />
+          </div>
+
+          {/* CATEGORY SECTIONS */}
+          {Object.entries(groupByCategory(data.products)).map(([category, products]) => (
+            <div key={category} style={{ marginBottom: '48px' }}>
+
+              {/* CATEGORY LABEL */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                marginBottom: '20px',
+                paddingBottom: '12px',
+                borderBottom: '2px solid var(--border)',
+              }}>
+                <span style={{ fontSize: '22px' }}>
+                  {categoryIcons[category] || '📦'}
+                </span>
+                <h4 style={{
+                  margin: 0,
+                  fontWeight: '800',
+                  fontSize: '16px',
+                  letterSpacing: '2px',
+                  textTransform: 'uppercase',
+                  color: 'var(--accent)',
+                }}>
                   {category}
                 </h4>
-                <CategoryCarousel category={category} currentProducts={products} />
+                <div style={{
+                  flex: 1,
+                  height: '1px',
+                  backgroundColor: 'var(--border)',
+                  marginLeft: '8px',
+                }} />
               </div>
-            )
-          )}
+
+              <CategoryCarousel category={category} currentProducts={products} />
+            </div>
+          ))}
 
           <Paginate
             pages={data.pages}
@@ -85,13 +137,9 @@ const CategoryCarousel = ({ category, currentProducts }) => {
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        const res = await fetch(
-          `/api/products/category/${encodeURIComponent(category)}`
-        );
+        const res = await fetch(`/api/products/category/${encodeURIComponent(category)}`);
         const data = await res.json();
-        if (Array.isArray(data)) {
-          setAllProducts(data);
-        }
+        if (Array.isArray(data)) setAllProducts(data);
       } catch (err) {
         console.error('Failed to fetch category products', err);
       }
@@ -100,67 +148,65 @@ const CategoryCarousel = ({ category, currentProducts }) => {
   }, [category]);
 
   useEffect(() => {
-    const updateVisibleCount = () => {
-      const width = window.innerWidth;
-      if (width < 576) {
-        setVisibleCount(1);
-      } else if (width < 768) {
-        setVisibleCount(2);
-      } else if (width < 992) {
-        setVisibleCount(3);
-      } else {
-        setVisibleCount(4);
-      }
+    const updateVisible = () => {
+      const w = window.innerWidth;
+      if (w < 576) setVisibleCount(1);
+      else if (w < 768) setVisibleCount(2);
+      else if (w < 992) setVisibleCount(3);
+      else setVisibleCount(4);
     };
-    updateVisibleCount();
-    window.addEventListener('resize', updateVisibleCount);
-    return () => window.removeEventListener('resize', updateVisibleCount);
+    updateVisible();
+    window.addEventListener('resize', updateVisible);
+    return () => window.removeEventListener('resize', updateVisible);
   }, []);
 
   const canPrev = startIndex > 0;
   const canNext = startIndex + visibleCount < allProducts.length;
-
   const prev = () => { if (canPrev) setStartIndex((i) => i - 1); };
   const next = () => { if (canNext) setStartIndex((i) => i + 1); };
-
   const visibleProducts = allProducts.slice(startIndex, startIndex + visibleCount);
   const cardWidth = `${100 / visibleCount}%`;
 
-  return (
-    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-      <button
-        onClick={prev}
-        disabled={!canPrev}
-        style={{
-          background: canPrev ? '#0d6efd' : '#ccc',
-          color: '#fff',
-          border: 'none',
-          borderRadius: '50%',
-          width: '32px',
-          height: '32px',
-          fontSize: '18px',
-          cursor: canPrev ? 'pointer' : 'not-allowed',
-          flexShrink: 0,
-          marginRight: '6px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 10,
-        }}
-      >
-        ‹
-      </button>
+  const ArrowBtn = ({ onClick, disabled, children }) => (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        background: disabled ? 'var(--border)' : 'var(--accent)',
+        color: disabled ? 'var(--text-muted)' : 'var(--btn-text)',
+        border: 'none',
+        borderRadius: '50%',
+        width: '36px',
+        height: '36px',
+        fontSize: '20px',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        flexShrink: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'all 0.2s',
+        opacity: disabled ? 0.4 : 1,
+        boxShadow: disabled ? 'none' : '0 4px 12px rgba(0,0,0,0.3)',
+      }}
+    >
+      {children}
+    </button>
+  );
 
-      <div style={{ display: 'flex', overflow: 'hidden', width: '100%' }}>
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <ArrowBtn onClick={prev} disabled={!canPrev}>‹</ArrowBtn>
+
+      <div style={{ display: 'flex', overflow: 'hidden', width: '100%', gap: '0' }}>
         {visibleProducts.map((product) => (
           <div
             key={product._id}
             style={{
               minWidth: cardWidth,
               maxWidth: cardWidth,
-              padding: '0 6px',
-              transition: 'all 0.3s ease',
+              padding: '0 8px',
               boxSizing: 'border-box',
+              transition: 'all 0.3s ease',
             }}
           >
             <Product product={product} />
@@ -168,28 +214,7 @@ const CategoryCarousel = ({ category, currentProducts }) => {
         ))}
       </div>
 
-      <button
-        onClick={next}
-        disabled={!canNext}
-        style={{
-          background: canNext ? '#0d6efd' : '#ccc',
-          color: '#fff',
-          border: 'none',
-          borderRadius: '50%',
-          width: '32px',
-          height: '32px',
-          fontSize: '18px',
-          cursor: canNext ? 'pointer' : 'not-allowed',
-          flexShrink: 0,
-          marginLeft: '6px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 10,
-        }}
-      >
-        ›
-      </button>
+      <ArrowBtn onClick={next} disabled={!canNext}>›</ArrowBtn>
     </div>
   );
 };

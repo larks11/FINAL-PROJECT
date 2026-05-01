@@ -1,78 +1,99 @@
 import { useState } from 'react';
-import { Card, Badge } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import Rating from './Rating';
 
 const Product = ({ product }) => {
   const [hoveredColor, setHoveredColor] = useState(null);
-
-  // Use hovered color image or default
   const displayImage = hoveredColor?.image || product.image;
 
   return (
-    <Card
-      className='my-3 p-3 rounded product-card'
+    <div
+      className='product-card'
       style={{
         backgroundColor: 'var(--bg-card)',
         border: '1px solid var(--border)',
-        boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+        borderRadius: '16px',
+        overflow: 'hidden',
         height: '100%',
         position: 'relative',
-        transition: 'transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease',
+        transition: 'transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease',
         cursor: 'pointer',
+        display: 'flex',
+        flexDirection: 'column',
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'translateY(-8px)';
-        e.currentTarget.style.boxShadow = '0 16px 40px rgba(0,0,0,0.4)';
+        e.currentTarget.style.transform = 'translateY(-10px)';
+        e.currentTarget.style.boxShadow = '0 20px 50px rgba(0,0,0,0.15)';
         e.currentTarget.style.borderColor = 'var(--accent)';
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)';
+        e.currentTarget.style.boxShadow = 'none';
         e.currentTarget.style.borderColor = 'var(--border)';
       }}
     >
-      {/* SOLD OUT BADGE */}
-      {product.countInStock === 0 && (
-        <div style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 10 }}>
-          <Badge bg='danger' style={{ fontSize: '11px', padding: '5px 8px' }}>
-            SOLD OUT
-          </Badge>
-        </div>
-      )}
+      {/* BADGES */}
+      <div style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 10, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        {product.countInStock === 0 && (
+          <span style={{
+            backgroundColor: '#e74c3c', color: '#fff',
+            fontSize: '10px', fontWeight: '700',
+            padding: '3px 8px', borderRadius: '20px', letterSpacing: '0.5px',
+          }}>SOLD OUT</span>
+        )}
+        {product.countInStock > 0 && product.countInStock <= 5 && (
+          <span style={{
+            backgroundColor: '#e67e22', color: '#fff',
+            fontSize: '10px', fontWeight: '700',
+            padding: '3px 8px', borderRadius: '20px',
+          }}>ONLY {product.countInStock} LEFT</span>
+        )}
+      </div>
 
-      {/* PRODUCT IMAGE */}
+      {/* IMAGE */}
       <Link to={`/product/${product._id}`}>
-        <Card.Img
-          src={displayImage}
-          variant='top'
-          style={{
-            height: '200px',
-            objectFit: 'contain',
-            opacity: product.countInStock === 0 ? 0.5 : 1,
-            transition: 'opacity 0.2s ease',
-          }}
-        />
+        <div style={{
+          backgroundColor: 'var(--bg-soft)',
+          padding: '20px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          height: '200px', overflow: 'hidden',
+        }}>
+          <img
+            src={displayImage}
+            alt={product.name}
+            style={{
+              maxHeight: '160px', maxWidth: '100%',
+              objectFit: 'contain',
+              opacity: product.countInStock === 0 ? 0.45 : 1,
+              transition: 'transform 0.4s ease, opacity 0.2s',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          />
+        </div>
       </Link>
 
-      <Card.Body className='d-flex flex-column justify-content-between'>
+      {/* CONTENT */}
+      <div style={{
+        padding: '14px 16px 16px',
+        display: 'flex', flexDirection: 'column', gap: '8px', flex: 1,
+      }}>
         <Link to={`/product/${product._id}`} style={{ textDecoration: 'none' }}>
-          <Card.Title
-            as='div'
-            className='product-title'
-            style={{ color: 'var(--text-main)', minHeight: '48px' }}
-          >
-            <strong>{product.name}</strong>
-          </Card.Title>
+          <p style={{
+            color: 'var(--text-main)', fontWeight: '600', fontSize: '14px',
+            lineHeight: '1.4', minHeight: '40px', margin: 0,
+            display: '-webkit-box', WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical', overflow: 'hidden',
+          }}>
+            {product.name}
+          </p>
         </Link>
 
-        <Card.Text as='div'>
-          <Rating value={product.rating} text={`${product.numReviews} reviews`} />
-        </Card.Text>
+        <Rating value={product.rating} text={`${product.numReviews} reviews`} />
 
-        {/* COLOR VARIANTS */}
+        {/* COLOR DOTS */}
         {product.colorVariants && product.colorVariants.length > 0 && (
-          <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
             {product.colorVariants.map((variant, i) => (
               <div
                 key={i}
@@ -80,29 +101,57 @@ const Product = ({ product }) => {
                 onMouseEnter={() => setHoveredColor(variant)}
                 onMouseLeave={() => setHoveredColor(null)}
                 style={{
-                  width: '20px',
-                  height: '20px',
-                  borderRadius: '50%',
+                  width: '18px', height: '18px', borderRadius: '50%',
                   backgroundColor: variant.colorHex,
                   border: hoveredColor?.colorName === variant.colorName
-                    ? '2px solid var(--accent)'
-                    : '2px solid var(--border)',
-                  cursor: 'pointer',
-                  transition: 'transform 0.2s, border-color 0.2s',
-                  transform: hoveredColor?.colorName === variant.colorName
-                    ? 'scale(1.3)'
-                    : 'scale(1)',
+                    ? '2px solid var(--accent)' : '2px solid var(--border)',
+                  cursor: 'pointer', transition: 'transform 0.2s',
+                  transform: hoveredColor?.colorName === variant.colorName ? 'scale(1.3)' : 'scale(1)',
                 }}
               />
             ))}
           </div>
         )}
 
-        <Card.Text as='h3' style={{ color: 'var(--accent)', fontWeight: 'bold', marginTop: '8px' }}>
-          ₱{product.price.toLocaleString('en-PH')}
-        </Card.Text>
-      </Card.Body>
-    </Card>
+        {/* PRICE + VIEW BUTTON */}
+        <div style={{
+          marginTop: 'auto', paddingTop: '10px',
+          borderTop: '1px solid var(--border)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <span style={{
+            color: 'var(--accent)', fontWeight: '800',
+            fontSize: '18px', letterSpacing: '-0.5px',
+          }}>
+            ₱{product.price.toLocaleString('en-PH')}
+          </span>
+
+          {/* ✅ className='view-btn' — CSS override sa index.css */}
+          <Link
+            to={`/product/${product._id}`}
+            className='view-btn'
+            style={{
+              backgroundColor: 'var(--accent)',
+              color: '#000000',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '6px 14px',
+              fontSize: '12px',
+              fontWeight: '800',
+              textDecoration: 'none',
+              display: 'inline-block',
+              lineHeight: '1.5',
+              transition: 'opacity 0.2s',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.85'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+          >
+            View
+          </Link>
+        </div>
+      </div>
+    </div>
   );
 };
 

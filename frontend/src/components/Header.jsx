@@ -13,11 +13,15 @@ import {
   useGetMyRequestsQuery,
 } from '../slices/productsApiSlice';
 
+// ✅ 3 white combos gidugang
 const THEMES = [
-  { id: 'black-gold',    label: '🖤 Black & Gold',    dot: '#d4af37', bg: '#0a0a0a' },
-  { id: 'blue-silver',   label: '🔵 Blue & Silver',   dot: '#a0b4d6', bg: '#0b0f1a' },
-  { id: 'red-black',     label: '🔴 Red & Black',     dot: '#e03030', bg: '#0a0000' },
-  { id: 'emerald-black', label: '🟢 Emerald & Black', dot: '#2ecc71', bg: '#010a05' },
+  { id: 'black-gold',    label: '🖤 Black & Gold',         dot: '#d4af37', bg: '#0a0a0a' },
+  { id: 'white-gold',    label: '🤍 White & Gold',         dot: '#b8860b', bg: '#f5f0e8' },
+  { id: 'white-navy',    label: '🤍 White & Navy Blue',    dot: '#1a3a6b', bg: '#f0f4f8' },
+  { id: 'white-green',   label: '🤍 White & Forest Green', dot: '#1a5c2a', bg: '#f0f5f0' },
+  { id: 'blue-silver',   label: '🔵 Blue & Silver',        dot: '#a0b4d6', bg: '#0b0f1a' },
+  { id: 'red-black',     label: '🔴 Red & Black',          dot: '#e03030', bg: '#0a0000' },
+  { id: 'emerald-black', label: '🟢 Emerald & Black',      dot: '#2ecc71', bg: '#010a05' },
 ];
 
 const ThemeDropdown = ({ currentTheme, setCurrentTheme }) => {
@@ -60,8 +64,8 @@ const ThemeDropdown = ({ currentTheme, setCurrentTheme }) => {
           backgroundColor: 'var(--bg-card)',
           border: '1px solid var(--accent-dark)',
           borderRadius: '10px', padding: '10px',
-          zIndex: 9999, minWidth: '190px',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+          zIndex: 9999, minWidth: '210px',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
         }}>
           <p style={{
             color: 'var(--accent)', fontSize: '10px', fontWeight: '700',
@@ -81,7 +85,7 @@ const ThemeDropdown = ({ currentTheme, setCurrentTheme }) => {
                   display: 'flex', alignItems: 'center', gap: '10px',
                   padding: '8px 10px', borderRadius: '6px', cursor: 'pointer',
                   backgroundColor: isActive ? 'var(--accent-dark)' : 'transparent',
-                  color: isActive ? 'var(--btn-text)' : 'var(--text-main)',
+                  color: isActive ? '#ffffff' : 'var(--text-main)',
                   fontWeight: isActive ? '700' : '400',
                   fontSize: '13px', transition: 'background 0.2s',
                 }}
@@ -91,7 +95,7 @@ const ThemeDropdown = ({ currentTheme, setCurrentTheme }) => {
                 <div style={{
                   width: '14px', height: '14px', borderRadius: '50%',
                   background: `linear-gradient(135deg, ${theme.bg} 50%, ${theme.dot} 50%)`,
-                  border: '1px solid #666', flexShrink: 0,
+                  border: '1px solid #999', flexShrink: 0,
                 }} />
                 {theme.label}
                 {isActive && <span style={{ marginLeft: 'auto', fontSize: '11px' }}>✓</span>}
@@ -150,6 +154,7 @@ const Header = () => {
       <Navbar expand='lg' collapseOnSelect style={{
         backgroundColor: 'var(--navbar-bg)',
         borderBottom: '2px solid var(--accent)',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
       }}>
         <Container>
           <Navbar.Brand as={Link} to='/'>
@@ -196,16 +201,11 @@ const Header = () => {
               {userInfo && !userInfo.isAdmin && (
                 <>
                   <NavDropdown title={userInfo.name} id='username'>
-                    <NavDropdown.Item as={Link} to='/profile'>
-                      Profile
-                    </NavDropdown.Item>
-
-                    {/* ✅ MY PURCHASE — gibag-o gikan "My Orders" */}
+                    <NavDropdown.Item as={Link} to='/profile'>Profile</NavDropdown.Item>
                     <NavDropdown.Item as={Link} to='/myorders'>
                       <FaBoxOpen style={{ marginRight: '6px' }} />
                       My Purchase
                     </NavDropdown.Item>
-
                     <NavDropdown.Item as={Link} to='/my-requests'>
                       <FaEnvelope style={{ marginRight: '6px' }} />
                       My Requests
@@ -215,11 +215,9 @@ const Header = () => {
                         </Badge>
                       )}
                     </NavDropdown.Item>
-
                     <NavDropdown.Divider />
                     <NavDropdown.Item onClick={logoutHandler}>Logout</NavDropdown.Item>
                   </NavDropdown>
-
                   <ThemeDropdown currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} />
                 </>
               )}

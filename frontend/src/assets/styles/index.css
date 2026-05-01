@@ -10,7 +10,7 @@
   --text-muted: #999;
   --border: #2e2e2e;
   --navbar-bg: #111111;
-  --btn-text: #0a0a0a;
+  --btn-text: #ffffff;
   --carousel-bg: #1a1200;
 }
 
@@ -59,6 +59,54 @@ body[data-theme='emerald-black'] {
   --carousel-bg: #041a0e;
 }
 
+/* ✅ WHITE & GOLD */
+body[data-theme='white-gold'] {
+  --bg-main: #f5f0e8;
+  --bg-soft: #ede8dc;
+  --bg-card: #ffffff;
+  --accent: #b8860b;
+  --accent-light: #d4af37;
+  --accent-dark: #8b6508;
+  --text-main: #1a1a1a;
+  --text-muted: #666666;
+  --border: #ddd0b0;
+  --navbar-bg: #ffffff;
+  --btn-text: #ffffff;
+  --carousel-bg: #fdf6e3;
+}
+
+/* ✅ WHITE & NAVY BLUE */
+body[data-theme='white-navy'] {
+  --bg-main: #f0f4f8;
+  --bg-soft: #e4ecf4;
+  --bg-card: #ffffff;
+  --accent: #1a3a6b;
+  --accent-light: #2a5aaa;
+  --accent-dark: #102444;
+  --text-main: #0d1b2a;
+  --text-muted: #5a7a9a;
+  --border: #c0d0e0;
+  --navbar-bg: #ffffff;
+  --btn-text: #ffffff;
+  --carousel-bg: #e8f0f8;
+}
+
+/* ✅ WHITE & FOREST GREEN */
+body[data-theme='white-green'] {
+  --bg-main: #f0f5f0;
+  --bg-soft: #e4ede4;
+  --bg-card: #ffffff;
+  --accent: #1a5c2a;
+  --accent-light: #2a8a44;
+  --accent-dark: #0f3a1a;
+  --text-main: #0d1f0d;
+  --text-muted: #4a7a4a;
+  --border: #b8d8b8;
+  --navbar-bg: #ffffff;
+  --btn-text: #ffffff;
+  --carousel-bg: #e8f5e8;
+}
+
 /* ===== GLOBAL ===== */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -73,6 +121,7 @@ body {
 .navbar {
   background-color: var(--navbar-bg) !important;
   border-bottom: 2px solid var(--accent) !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 .navbar-brand { color: var(--accent) !important; font-weight: 700; font-size: 1.4rem; }
 .navbar-brand:hover { color: var(--accent-light) !important; }
@@ -102,7 +151,7 @@ body {
 .dropdown-item { color: var(--text-main) !important; }
 .dropdown-item:hover {
   background-color: var(--accent-dark) !important;
-  color: var(--btn-text) !important;
+  color: #ffffff !important;
 }
 .dropdown-divider { border-color: var(--border) !important; }
 
@@ -119,7 +168,7 @@ body {
 .carousel-caption h5,
 .carousel-caption p { color: var(--text-main) !important; }
 
-/* ===== CAROUSEL ARROWS — theme color ===== */
+/* ===== CAROUSEL ARROWS ===== */
 .carousel-control-prev,
 .carousel-control-next {
   width: 40px !important;
@@ -137,33 +186,38 @@ body {
 .carousel-control-next-icon {
   width: 16px !important;
   height: 16px !important;
-  filter: brightness(0) !important;
+  filter: brightness(0) invert(1) !important;
 }
 .carousel-control-prev:hover,
 .carousel-control-next:hover {
   background-color: var(--accent-light) !important;
   opacity: 1 !important;
 }
-
-/* Carousel indicators */
 .carousel-indicators button {
   background-color: var(--accent-dark) !important;
   border: none !important;
   height: 4px !important;
   border-radius: 2px !important;
 }
-.carousel-indicators .active {
-  background-color: var(--accent) !important;
-}
+.carousel-indicators .active { background-color: var(--accent) !important; }
 
-/* ===== PRODUCT CARD HOVER ANIMATION ===== */
+/* ===== PRODUCT CARD ===== */
 .product-card {
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease !important;
 }
 .product-card:hover {
   transform: translateY(-8px) !important;
-  box-shadow: 0 16px 40px rgba(0,0,0,0.5) !important;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.15) !important;
   border-color: var(--accent) !important;
+}
+
+/* ✅ VIEW BUTTON — klaro sa bisan unsang theme */
+a.view-btn,
+a.view-btn:hover,
+a.view-btn:visited,
+a.view-btn:active {
+  color: #000000 !important;
+  text-decoration: none !important;
 }
 
 /* ===== CARDS ===== */
@@ -187,19 +241,20 @@ body {
 .btn-primary {
   background-color: var(--accent) !important;
   border-color: var(--accent) !important;
-  color: var(--btn-text) !important;
+  color: #ffffff !important;
   font-weight: 600;
 }
 .btn-primary:hover {
   background-color: var(--accent-light) !important;
   border-color: var(--accent-light) !important;
+  color: #ffffff !important;
 }
 .btn-primary:disabled {
-  background-color: #333 !important;
-  border-color: #333 !important;
-  color: #777 !important;
+  background-color: #ccc !important;
+  border-color: #ccc !important;
+  color: #888 !important;
 }
-.btn-danger    { background-color: #c0392b !important; border: none !important; }
+.btn-danger    { background-color: #c0392b !important; border: none !important; color: #fff !important; }
 .btn-secondary {
   background-color: var(--bg-soft) !important;
   border-color: var(--border) !important;
@@ -218,8 +273,6 @@ body {
 }
 .form-control::placeholder { color: var(--text-muted) !important; }
 .form-label { color: var(--text-main) !important; }
-
-/* Radio button accent */
 .form-check-input:checked {
   background-color: var(--accent) !important;
   border-color: var(--accent) !important;
@@ -266,10 +319,7 @@ a:hover { color: var(--accent-light) !important; }
 .card span,
 .card small { color: var(--text-main) !important; }
 
-/* Star ratings */
 .text-warning { color: var(--accent) !important; }
-
-/* ===== SECTION HEADERS ===== */
 .border-start { border-left-color: var(--accent) !important; }
 
 /* ===== PAGINATION ===== */
@@ -281,26 +331,18 @@ a:hover { color: var(--accent-light) !important; }
 .page-item.active .page-link {
   background-color: var(--accent) !important;
   border-color: var(--accent) !important;
-  color: var(--btn-text) !important;
+  color: #ffffff !important;
 }
 .page-item .page-link:hover {
   background-color: var(--accent-dark) !important;
-  color: var(--btn-text) !important;
+  color: #ffffff !important;
 }
 
 /* ===== THEME SWITCHER ===== */
-.theme-switcher {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-right: 8px;
-}
+.theme-switcher { display: flex; align-items: center; gap: 6px; margin-right: 8px; }
 .theme-dot {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  cursor: pointer;
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid transparent; cursor: pointer;
   transition: transform 0.2s, border-color 0.2s;
 }
 .theme-dot:hover { transform: scale(1.2); }
