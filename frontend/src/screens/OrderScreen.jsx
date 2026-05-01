@@ -60,9 +60,9 @@ const OrderScreen = () => {
 
     const stepOffsets = [
       0,
-      1 + r(1) * 2,
-      3 + r(2) * 4,
-      7 + r(3) * 5,
+      0.5 + r(1) * 1,
+      1 + r(2) * 2,
+      3 + r(3) * 3,
       totalHours * 0.5 + r(4) * 3,
       totalHours * 0.75 + r(5) * 2,
       totalHours + r(6) * 1,
@@ -75,16 +75,16 @@ const OrderScreen = () => {
 
     if (order.isCancelled) {
       return [
-        { label: 'Order Created – Manila Warehouse', time: formatTime(created), done: true },
+        { label: 'Order Created – Ormoc City Main Branch', time: formatTime(created), done: true },
         { label: 'Order Cancelled', time: formatTime(order.cancelledAt), done: true, cancelled: true },
       ];
     }
 
     const steps = [
-      { label: 'Order Created – Manila Warehouse', scheduledTime: addHours(created, stepOffsets[0]), done: true },
-      { label: 'Picked Up – Parañaque Sorting Center', scheduledTime: addHours(created, stepOffsets[1]), done: now >= addHours(created, stepOffsets[1]) },
-      { label: 'Sorting – Cebu Logistics Hub', scheduledTime: addHours(created, stepOffsets[2]), done: now >= addHours(created, stepOffsets[2]) },
-      { label: 'Transport – Tacloban Distribution Hub', scheduledTime: addHours(created, stepOffsets[3]), done: now >= addHours(created, stepOffsets[3]) },
+      { label: 'Order Created – Ormoc City Main Branch', scheduledTime: addHours(created, stepOffsets[0]), done: true },
+      { label: 'Prepared – CELLCOM Ormoc Warehouse', scheduledTime: addHours(created, stepOffsets[1]), done: now >= addHours(created, stepOffsets[1]) },
+      { label: 'Picked Up – Ormoc City Courier', scheduledTime: addHours(created, stepOffsets[2]), done: now >= addHours(created, stepOffsets[2]) },
+      { label: 'In Transit – Ormoc Distribution Hub', scheduledTime: addHours(created, stepOffsets[3]), done: now >= addHours(created, stepOffsets[3]) },
       { label: `Arrived – ${order.shippingAddress.city} Delivery Hub`, scheduledTime: addHours(created, stepOffsets[4]), done: now >= addHours(created, stepOffsets[4]) },
       { label: `Out for Delivery – ${order.shippingAddress.city}`, scheduledTime: addHours(created, stepOffsets[5]), done: now >= addHours(created, stepOffsets[5]) },
       {
@@ -185,7 +185,6 @@ const OrderScreen = () => {
                 display: 'flex',
                 flexDirection: 'column',
               }}>
-                {/* Circle dot only — no big highlight */}
                 <div style={{
                   position: 'absolute',
                   left: '-22px', top: '3px',
@@ -208,7 +207,6 @@ const OrderScreen = () => {
                   transition: 'all 0.3s',
                 }} />
 
-                {/* Text content — no background highlight */}
                 <div style={{ paddingLeft: '4px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{
@@ -229,7 +227,7 @@ const OrderScreen = () => {
                       <span style={{
                         fontSize: '10px',
                         backgroundColor: 'var(--accent)',
-                        color: 'var(--btn-text)',
+                        color: '#000000',
                         padding: '2px 8px',
                         borderRadius: '10px',
                         fontWeight: '700',
@@ -389,7 +387,7 @@ const OrderScreen = () => {
                 )}
               </ListGroup.Item>
 
-              {/* CANCEL BUTTON — Step 0 lang */}
+              {/* CANCEL BUTTON */}
               {canCancel(order) && (
                 <ListGroup.Item>
                   <Button variant='danger' className='w-100' onClick={() => setShowCancelModal(true)}>

@@ -81,15 +81,7 @@ const ProfileScreen = () => {
 
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '10px 0 80px' }}>
-
-      {/* PAGE TITLE */}
-      <h2 style={{
-        color: 'var(--accent)',
-        fontWeight: '800',
-        fontSize: '22px',
-        marginBottom: '20px',
-        letterSpacing: '1px',
-      }}>
+      <h2 style={{ color: 'var(--accent)', fontWeight: '800', fontSize: '22px', marginBottom: '20px', letterSpacing: '1px' }}>
         My Account
       </h2>
 
@@ -104,12 +96,7 @@ const ProfileScreen = () => {
           overflow: 'hidden',
           alignSelf: 'flex-start',
         }}>
-          {/* Avatar */}
-          <div style={{
-            padding: '24px 16px',
-            textAlign: 'center',
-            borderBottom: '1px solid var(--border)',
-          }}>
+          <div style={{ padding: '24px 16px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>
             <div style={{
               width: '64px', height: '64px',
               borderRadius: '50%',
@@ -117,19 +104,14 @@ const ProfileScreen = () => {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               margin: '0 auto 10px',
               fontSize: '24px', fontWeight: '800',
-              color: 'var(--btn-text)',
+              color: '#000000',
             }}>
               {userInfo.name.charAt(0).toUpperCase()}
             </div>
-            <p style={{ margin: 0, fontWeight: '700', fontSize: '14px', color: 'var(--text-main)' }}>
-              {userInfo.name}
-            </p>
-            <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>
-              {userInfo.email}
-            </p>
+            <p style={{ margin: 0, fontWeight: '700', fontSize: '14px', color: 'var(--text-main)' }}>{userInfo.name}</p>
+            <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>{userInfo.email}</p>
           </div>
 
-          {/* Nav items */}
           {SIDEBAR.map((item) => (
             <button
               key={item.key}
@@ -154,58 +136,31 @@ const ProfileScreen = () => {
 
         {/* MAIN CONTENT */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{
-            backgroundColor: 'var(--bg-card)',
-            borderRadius: '14px',
-            border: '1px solid var(--border)',
-            padding: '24px',
-          }}>
+          <div style={{ backgroundColor: 'var(--bg-card)', borderRadius: '14px', border: '1px solid var(--border)', padding: '24px' }}>
 
-            {/* PROFILE SECTION */}
             {activeSection === 'profile' && (
               <>
-                <h3 style={{ color: 'var(--accent)', fontWeight: '700', marginBottom: '6px', fontSize: '18px' }}>
-                  My Profile
-                </h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '24px' }}>
-                  Manage and update your personal information.
-                </p>
-
+                <h3 style={{ color: 'var(--accent)', fontWeight: '700', marginBottom: '6px', fontSize: '18px' }}>My Profile</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '24px' }}>Manage and update your personal information.</p>
                 <form onSubmit={submitHandler}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div>
                       <label style={labelStyle}>Full Name</label>
-                      <input
-                        type='text'
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        style={inputStyle}
+                      <input type='text' value={name} onChange={(e) => setName(e.target.value)} style={inputStyle}
                         onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
-                        onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
-                      />
+                        onBlur={(e) => e.target.style.borderColor = 'var(--border)'} />
                     </div>
                     <div>
                       <label style={labelStyle}>Email Address</label>
-                      <input
-                        type='email'
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        style={inputStyle}
+                      <input type='email' value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle}
                         onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
-                        onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
-                      />
+                        onBlur={(e) => e.target.style.borderColor = 'var(--border)'} />
                     </div>
                     <div>
                       <button type='submit' style={{
-                        backgroundColor: 'var(--accent)',
-                        color: 'var(--btn-text)',
-                        border: 'none',
-                        borderRadius: '8px',
-                        padding: '10px 28px',
-                        fontWeight: '700',
-                        fontSize: '14px',
-                        cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', gap: '6px',
+                        backgroundColor: 'var(--accent)', color: '#000000', border: 'none',
+                        borderRadius: '8px', padding: '10px 28px', fontWeight: '700', fontSize: '14px',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
                       }}>
                         <FaCheckCircle /> Save Changes
                       </button>
@@ -216,16 +171,10 @@ const ProfileScreen = () => {
               </>
             )}
 
-            {/* PASSWORD SECTION */}
             {activeSection === 'password' && (
               <>
-                <h3 style={{ color: 'var(--accent)', fontWeight: '700', marginBottom: '6px', fontSize: '18px' }}>
-                  Change Password
-                </h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '24px' }}>
-                  Keep your account secure by updating your password regularly.
-                </p>
-
+                <h3 style={{ color: 'var(--accent)', fontWeight: '700', marginBottom: '6px', fontSize: '18px' }}>Change Password</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '24px' }}>Keep your account secure by updating your password regularly.</p>
                 <form onSubmit={submitHandler}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     {[
@@ -235,28 +184,17 @@ const ProfileScreen = () => {
                     ].map((field, i) => (
                       <div key={i}>
                         <label style={labelStyle}>{field.label}</label>
-                        <input
-                          type='password'
-                          value={field.val}
-                          onChange={(e) => field.set(e.target.value)}
-                          placeholder={field.ph}
-                          style={inputStyle}
+                        <input type='password' value={field.val} onChange={(e) => field.set(e.target.value)}
+                          placeholder={field.ph} style={inputStyle}
                           onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
-                          onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
-                        />
+                          onBlur={(e) => e.target.style.borderColor = 'var(--border)'} />
                       </div>
                     ))}
                     <div>
                       <button type='submit' style={{
-                        backgroundColor: 'var(--accent)',
-                        color: 'var(--btn-text)',
-                        border: 'none',
-                        borderRadius: '8px',
-                        padding: '10px 28px',
-                        fontWeight: '700',
-                        fontSize: '14px',
-                        cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', gap: '6px',
+                        backgroundColor: 'var(--accent)', color: '#000000', border: 'none',
+                        borderRadius: '8px', padding: '10px 28px', fontWeight: '700', fontSize: '14px',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
                       }}>
                         <FaLock /> Update Password
                       </button>
@@ -269,25 +207,13 @@ const ProfileScreen = () => {
           </div>
 
           {/* RECENT ORDERS */}
-          <div style={{
-            marginTop: '20px',
-            backgroundColor: 'var(--bg-card)',
-            borderRadius: '14px',
-            border: '1px solid var(--border)',
-            overflow: 'hidden',
-          }}>
+          <div style={{ marginTop: '20px', backgroundColor: 'var(--bg-card)', borderRadius: '14px', border: '1px solid var(--border)', overflow: 'hidden' }}>
             <div style={{
-              padding: '16px 20px',
-              borderBottom: '2px solid var(--accent)',
-              backgroundColor: 'var(--bg-soft)',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '16px 20px', borderBottom: '2px solid var(--accent)',
+              backgroundColor: 'var(--bg-soft)', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             }}>
-              <h4 style={{ margin: 0, color: 'var(--accent)', fontWeight: '800', fontSize: '15px', letterSpacing: '1px' }}>
-                RECENT ORDERS
-              </h4>
-              <Link to='/myorders' style={{ color: 'var(--accent)', fontSize: '13px', fontWeight: '600' }}>
-                View All →
-              </Link>
+              <h4 style={{ margin: 0, color: 'var(--accent)', fontWeight: '800', fontSize: '15px', letterSpacing: '1px' }}>RECENT ORDERS</h4>
+              <Link to='/myorders' style={{ color: 'var(--accent)', fontSize: '13px', fontWeight: '600' }}>View All →</Link>
             </div>
 
             {isLoading ? <Loader /> : error ? (
@@ -299,22 +225,15 @@ const ProfileScreen = () => {
                   return (
                     <div key={order._id} style={{
                       display: 'flex', alignItems: 'center', gap: '14px',
-                      padding: '14px 20px',
-                      borderBottom: '1px solid var(--border)',
-                      transition: 'background 0.2s',
+                      padding: '14px 20px', borderBottom: '1px solid var(--border)', transition: 'background 0.2s',
                     }}
                       onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-soft)'}
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     >
-                      {/* Product image */}
                       {order.orderItems[0] && (
-                        <img
-                          src={order.orderItems[0].image}
-                          alt=''
-                          style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border)' }}
-                        />
+                        <img src={order.orderItems[0].image} alt=''
+                          style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border)' }} />
                       )}
-
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ margin: 0, fontSize: '13px', fontWeight: '600', color: 'var(--text-main)' }}>
                           #{order._id.slice(-8).toUpperCase()}
@@ -323,24 +242,22 @@ const ProfileScreen = () => {
                           {order.createdAt.substring(0, 10)} · {order.orderItems.length} item{order.orderItems.length > 1 ? 's' : ''}
                         </p>
                       </div>
-
                       <div style={{ textAlign: 'right' }}>
                         <p style={{ margin: 0, fontWeight: '700', color: 'var(--accent)', fontSize: '14px' }}>
                           ₱{Number(order.totalPrice).toLocaleString('en-PH')}
                         </p>
                         <span style={{
                           fontSize: '11px', fontWeight: '700',
-                          color: status.color,
-                          backgroundColor: status.bg,
+                          color: status.color, backgroundColor: status.bg,
                           padding: '2px 8px', borderRadius: '10px',
                         }}>
                           {status.label}
                         </span>
                       </div>
-
-                      <Link to={`/order/${order._id}`} style={{
+                      {/* ✅ FIXED: #000 para klaro ang View text sa gold button */}
+                      <Link to={`/order/${order._id}`} className='view-btn' style={{
                         backgroundColor: 'var(--accent)',
-                        color: 'var(--btn-text)',
+                        color: '#000000',
                         padding: '6px 14px',
                         borderRadius: '6px',
                         fontSize: '12px',

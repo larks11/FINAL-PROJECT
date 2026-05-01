@@ -13,29 +13,23 @@ const ProductCarousel = () => {
       pause='hover'
       className='mb-4'
       style={{
-        border: '3px solid #0099ff',
         borderRadius: '12px',
         overflow: 'hidden',
         boxShadow: '0 8px 20px rgba(0,0,0,0.35)',
-        backgroundColor: '#176bcc',
       }}
     >
       {products.map((product) => (
         <Carousel.Item key={product._id} style={{ padding: '20px' }}>
-          <Link to={`/product/₱{product._id}`}>
+          <Link to={`/product/${product._id}`}>
             <Image
               src={product.image}
               alt={product.name}
               fluid
-              style={{
-                maxHeight: '450px',
-                objectFit: 'contain',
-                margin: '0 auto',
-              }}
+              style={{ maxHeight: '450px', objectFit: 'contain', margin: '0 auto' }}
             />
-
             <Carousel.Caption className='carousel-caption'>
-              <h4 className='text-white'>
+              {/* ✅ FIXED: var(--accent) para musunod sa theme, dili hardcoded white */}
+              <h4 style={{ color: 'var(--accent)', fontWeight: '700', textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}>
                 {product.name} (₱{product.price.toLocaleString('en-PH')})
               </h4>
             </Carousel.Caption>
