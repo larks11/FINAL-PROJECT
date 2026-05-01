@@ -66,21 +66,32 @@ const CartScreen = () => {
           border: '1px solid var(--border)',
         }}>
           <div style={{ fontSize: '64px', marginBottom: '16px' }}>🛒</div>
-          <h3 style={{ color: 'var(--text-main)', marginBottom: '8px' }}>Your cart is empty</h3>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>
+          <h3 style={{ color: 'var(--text-main)', marginBottom: '8px', fontWeight: '800' }}>
+            Your cart is empty
+          </h3>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '14px' }}>
             Looks like you haven't added anything yet.
           </p>
-          <Link to='/' style={{
-            backgroundColor: 'var(--accent)',
-            color: 'var(--btn-text)',
-            padding: '10px 24px',
-            borderRadius: '8px',
-            fontWeight: '700',
-            textDecoration: 'none',
-            fontSize: '14px',
-          }}>
-            Start Shopping
-          </Link>
+          <button
+            onClick={() => navigate('/')}
+            style={{
+              backgroundColor: 'var(--accent)',
+              color: 'var(--btn-text)',
+              padding: '12px 32px',
+              borderRadius: '10px',
+              fontWeight: '800',
+              fontSize: '15px',
+              letterSpacing: '0.5px',
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
+              transition: 'opacity 0.2s',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.85'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+          >
+            🛍️ Start Shopping
+          </button>
         </div>
       ) : (
         <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
@@ -237,7 +248,6 @@ const CartScreen = () => {
               position: 'sticky',
               top: '20px',
             }}>
-              {/* HEADER */}
               <div style={{
                 padding: '16px 20px',
                 backgroundColor: 'var(--bg-soft)',
@@ -249,7 +259,6 @@ const CartScreen = () => {
               </div>
 
               <div style={{ padding: '20px' }}>
-                {/* ROWS */}
                 {[
                   { label: `Items (${totalQty} pcs)`, value: formatPeso(subtotal) },
                   { label: `Shipping Fee (1% × ${totalQty})`, value: formatPeso(shippingFee), accent: true },
@@ -269,7 +278,6 @@ const CartScreen = () => {
                   </div>
                 ))}
 
-                {/* TOTAL */}
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -282,7 +290,6 @@ const CartScreen = () => {
                   </span>
                 </div>
 
-                {/* CHECKOUT BTN */}
                 <button
                   onClick={checkoutHandler}
                   disabled={cartItems.length === 0}

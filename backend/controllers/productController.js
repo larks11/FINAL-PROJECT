@@ -11,11 +11,25 @@ const getProducts = asyncHandler(async (req, res) => {
     ? { name: { $regex: req.query.keyword, $options: 'i' } }
     : {};
 
-  const count = await Product.countDocuments({ ...keyword });
-  const products = await Product.find({ ...keyword })
+  // ✅ I-exclude ang archived products sa user view
+  const filter = { ...keyword, isArchived: { $ne: true } };
+
+  const count = await Product.countDocuments(filter);
+  const products = await Product.find(filter)
     .limit(pageSize)
     .skip(pageSize * (page - 1));
 
+  res.json({ products, page, pages: Math.ceil(count / pageSize) });
+});
+
+// ✅ BAG-ONG: Admin makakita sa tanan products including archived
+const getAdminProducts = asyncHandler(async (req, res) => {
+  const pageSize = Number(process.env.PAGINATION_LIMIT) || 10;
+  const page = Number(req.query.pageNumber) || 1;
+  const count = await Product.countDocuments({});
+  const products = await Product.find({})
+    .limit(pageSize)
+    .skip(pageSize * (page - 1));
   res.json({ products, page, pages: Math.ceil(count / pageSize) });
 });
 
@@ -41,6 +55,7 @@ const createProduct = asyncHandler(async (req, res) => {
     numReviews: 0,
     description: 'Sample description',
     colorVariants: [],
+    isArchived: false,
   });
 
   const createdProduct = await product.save();
@@ -49,38 +64,73 @@ const createProduct = asyncHandler(async (req, res) => {
 
 const updateProduct = asyncHandler(async (req, res) => {
   const {
-    name,
-    price,
-    description,
-    image,
-    brand,
-    category,
-    countInStock,
-    colorVariants,   // ← bag-o
+    name, price, description, image,
+    brand, category, countInStock, colorVariants,
   } = req.body;
 
   const product = await Product.findById(req.params.id);
 
   if (product) {
-    product.name         = name;
-    product.price        = price;
-    product.description  = description;
-    product.image        = image;
-    product.brand        = brand;
-    product.category     = category;
+    const wasOutOfStock = product.countInStock === 0;
+
+    product.name = name;
+    product.price = price;
+    product.description = description;
+    product.image = image;
+    product.brand = brand;
+    product.category = category;
     product.countInStock = countInStock;
-    product.colorVariants = colorVariants || [];   // ← bag-o
+    product.colorVariants = colorVariants || [];
 
-    const updatedProduct = await product.save();
+    // ✅ Auto-archive kung sold out, auto-unarchive kung restocked
+    if (Number(countInStock) === 0) {
+      product.isArchived = true;
 
-    if (Number(countInStock) > 0) {
-      await Request.updateMany(
-        { product: product._id, status: 'pending' },
-        { status: 'available' }
-      );
+      // Notify admin via Request
+      await Request.create({
+        user: req.user._id,
+        productName: name,
+        product: product._id,
+        message: `⚠️ SOLD OUT: "${name}" is now out of stock and has been archived from the homepage.`,
+        status: 'pending',
+        isRead: false,
+      });
+    } else {
+      // Kung na-restock, i-unarchive
+      product.isArchived = false;
     }
 
+    const updatedProduct = await product.save();
     res.json(updatedProduct);
+  } else {
+    res.status(404);
+    throw new Error('Product not found');
+  }
+});
+
+// ✅ BAG-ONG: Manual archive/unarchive toggle sa admin
+const toggleArchiveProduct = asyncHandler(async (req, res) => {
+  const product = await Product.findById(req.params.id);
+
+  if (product) {
+    product.isArchived = !product.isArchived;
+
+    if (product.isArchived) {
+      await Request.create({
+        user: req.user._id,
+        productName: product.name,
+        product: product._id,
+        message: `📦 ARCHIVED: "${product.name}" has been manually archived by admin.`,
+        status: 'pending',
+        isRead: false,
+      });
+    }
+
+    await product.save();
+    res.json({
+      message: product.isArchived ? 'Product archived' : 'Product unarchived',
+      isArchived: product.isArchived,
+    });
   } else {
     res.status(404);
     throw new Error('Product not found');
@@ -89,7 +139,6 @@ const updateProduct = asyncHandler(async (req, res) => {
 
 const deleteProduct = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id);
-
   if (product) {
     await Product.deleteOne({ _id: product._id });
     res.json({ message: 'Product removed' });
@@ -107,7 +156,6 @@ const createProductReview = asyncHandler(async (req, res) => {
     const alreadyReviewed = product.reviews.find(
       (r) => r.user.toString() === req.user._id.toString()
     );
-
     if (alreadyReviewed) {
       res.status(400);
       throw new Error('Product already reviewed');
@@ -117,7 +165,6 @@ const createProductReview = asyncHandler(async (req, res) => {
       user: req.user._id,
       'orderItems.product': product._id,
     });
-
     if (!hasPurchased) {
       res.status(403);
       throw new Error('You can only review products you have ordered');
@@ -145,12 +192,18 @@ const createProductReview = asyncHandler(async (req, res) => {
 });
 
 const getTopProducts = asyncHandler(async (req, res) => {
-  const products = await Product.find({}).sort({ rating: -1 }).limit(3);
+  const products = await Product.find({ isArchived: { $ne: true } })
+    .sort({ rating: -1 })
+    .limit(3);
   res.json(products);
 });
 
 const getProductsByCategory = asyncHandler(async (req, res) => {
-  const products = await Product.find({ category: req.params.category });
+  // ✅ I-exclude archived sa category view
+  const products = await Product.find({
+    category: req.params.category,
+    isArchived: { $ne: true },
+  });
   res.json(products);
 });
 
@@ -164,14 +217,12 @@ const checkUserOrder = asyncHandler(async (req, res) => {
 
 const requestProduct = asyncHandler(async (req, res) => {
   const { productId, productName, message } = req.body;
-
   const request = new Request({
     user: req.user._id,
     product: productId || null,
     productName,
     message: message || '',
   });
-
   const createdRequest = await request.save();
   res.status(201).json(createdRequest);
 });
@@ -181,7 +232,6 @@ const getRequests = asyncHandler(async (req, res) => {
     .populate('user', 'name email')
     .populate('product', 'name image countInStock')
     .sort({ createdAt: -1 });
-
   res.json(requests);
 });
 
@@ -228,13 +278,8 @@ const deleteAllRequests = asyncHandler(async (req, res) => {
 const replyToRequest = asyncHandler(async (req, res) => {
   const { message } = req.body;
   const request = await Request.findById(req.params.id);
-
   if (request) {
-    request.replies.push({
-      sender: 'admin',
-      senderName: req.user.name,
-      message,
-    });
+    request.replies.push({ sender: 'admin', senderName: req.user.name, message });
     request.hasNewReply = true;
     await request.save();
     res.status(201).json({ message: 'Reply sent' });
@@ -247,17 +292,12 @@ const replyToRequest = asyncHandler(async (req, res) => {
 const userReplyToRequest = asyncHandler(async (req, res) => {
   const { message } = req.body;
   const request = await Request.findById(req.params.id);
-
   if (request) {
     if (request.user.toString() !== req.user._id.toString()) {
       res.status(401);
       throw new Error('Not authorized');
     }
-    request.replies.push({
-      sender: 'user',
-      senderName: req.user.name,
-      message,
-    });
+    request.replies.push({ sender: 'user', senderName: req.user.name, message });
     request.isRead = false;
     await request.save();
     res.status(201).json({ message: 'Reply sent' });
@@ -281,9 +321,11 @@ const markReplySeen = asyncHandler(async (req, res) => {
 
 export {
   getProducts,
+  getAdminProducts,
   getProductById,
   createProduct,
   updateProduct,
+  toggleArchiveProduct,
   deleteProduct,
   createProductReview,
   getTopProducts,

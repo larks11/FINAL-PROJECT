@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Badge, Button, Modal, Form, ListGroup } from 'react-bootstrap';
+import { Modal } from 'react-bootstrap';
 import Loader from '../components/Loader';
 import Message from '../components/Message';
 import { FaPaperPlane } from 'react-icons/fa';
@@ -50,96 +50,156 @@ const UserRequestScreen = () => {
 
   return (
     <div>
-      <h2 className='my-4'>📬 My Requests</h2>
+      <h2 style={{ color: 'var(--accent)', margin: '24px 0' }}>📬 My Requests</h2>
 
       {isLoading ? (
         <Loader />
       ) : error ? (
         <Message variant='danger'>{error?.data?.message || error.error}</Message>
       ) : requests?.length === 0 ? (
-        <Message>You have no requests yet.</Message>
+        <div style={{
+          backgroundColor: 'var(--bg-card)',
+          border: '1px solid var(--border)',
+          borderRadius: '12px',
+          padding: '24px 20px',
+          color: 'var(--text-muted)',
+          fontSize: '15px',
+        }}>
+          You have no requests yet.
+        </div>
       ) : (
-        <ListGroup>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {requests.map((r) => (
-            <ListGroup.Item
+            <div
               key={r._id}
               style={{
-                backgroundColor: r.hasNewReply ? '#e8f5e9' : '#fff',
-                borderLeft: r.hasNewReply ? '4px solid #28a745' : '4px solid transparent',
+                backgroundColor: 'var(--bg-card)',
+                border: '1px solid var(--border)',
+                borderLeft: r.hasNewReply ? '4px solid var(--accent)' : '4px solid transparent',
+                borderRadius: '12px',
+                padding: '16px 20px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '12px',
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <strong>{r.productName}</strong>
-                  <div style={{ fontSize: '13px', color: '#666', marginTop: '2px' }}>
-                    {r.message || 'No message'}
-                  </div>
-                  <div style={{ marginTop: '6px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                    <Badge bg={r.status === 'available' ? 'success' : 'warning'}>
-                      {r.status === 'available' ? '✅ Available' : '⏳ Pending'}
-                    </Badge>
-                    {r.replies?.length > 0 && (
-                      <Badge bg='info'>💬 {r.replies.length} replies</Badge>
-                    )}
-                    {r.hasNewReply && (
-                      <Badge bg='success'>🔔 New Reply!</Badge>
-                    )}
-                  </div>
-                  <small style={{ color: '#aaa' }}>
-                    {new Date(r.createdAt).toLocaleDateString('en-PH')}
-                  </small>
+              <div>
+                <strong style={{ color: 'var(--text-main)', fontSize: '15px' }}>{r.productName}</strong>
+                <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  {r.message || 'No message'}
                 </div>
-                <Button
-                  size='sm'
-                  variant={r.hasNewReply ? 'success' : 'outline-primary'}
-                  onClick={() => handleView(r)}
-                >
-                  {r.hasNewReply ? '🔔 View Reply' : 'Open Chat'}
-                </Button>
+                <div style={{ marginTop: '8px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  <span style={{
+                    backgroundColor: r.status === 'available' ? '#2ecc71' : 'var(--accent)',
+                    color: '#fff',
+                    borderRadius: '20px',
+                    padding: '2px 10px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                  }}>
+                    {r.status === 'available' ? '✅ Available' : '⏳ Pending'}
+                  </span>
+                  {r.replies?.length > 0 && (
+                    <span style={{
+                      backgroundColor: 'var(--bg-soft)',
+                      color: 'var(--accent)',
+                      border: '1px solid var(--accent)',
+                      borderRadius: '20px',
+                      padding: '2px 10px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                    }}>
+                      💬 {r.replies.length} replies
+                    </span>
+                  )}
+                  {r.hasNewReply && (
+                    <span style={{
+                      backgroundColor: '#2ecc71',
+                      color: '#fff',
+                      borderRadius: '20px',
+                      padding: '2px 10px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                    }}>
+                      🔔 New Reply!
+                    </span>
+                  )}
+                </div>
+                <small style={{ color: 'var(--text-muted)', fontSize: '11px', marginTop: '6px', display: 'block' }}>
+                  {new Date(r.createdAt).toLocaleDateString('en-PH')}
+                </small>
               </div>
-            </ListGroup.Item>
+              <button
+                onClick={() => handleView(r)}
+                style={{
+                  backgroundColor: r.hasNewReply ? 'var(--accent)' : 'transparent',
+                  color: r.hasNewReply ? 'var(--btn-text)' : 'var(--accent)',
+                  border: '2px solid var(--accent)',
+                  borderRadius: '8px',
+                  padding: '7px 16px',
+                  fontSize: '13px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--accent)';
+                  e.currentTarget.style.color = 'var(--btn-text)';
+                }}
+                onMouseLeave={(e) => {
+                  if (!r.hasNewReply) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = 'var(--accent)';
+                  }
+                }}
+              >
+                {r.hasNewReply ? '🔔 View Reply' : 'Open Chat'}
+              </button>
+            </div>
           ))}
-        </ListGroup>
+        </div>
       )}
 
       {/* CHAT MODAL */}
       <Modal show={showModal} onHide={() => setShowModal(false)} centered size='lg'>
-        <Modal.Header closeButton>
-          <Modal.Title>💬 {selectedRequest?.productName}</Modal.Title>
+        <Modal.Header closeButton style={{ backgroundColor: 'var(--bg-card)', borderBottom: '2px solid var(--accent)' }}>
+          <Modal.Title style={{ color: 'var(--accent)', fontWeight: '800' }}>
+            💬 {selectedRequest?.productName}
+          </Modal.Title>
         </Modal.Header>
         {selectedRequest && (
-          <Modal.Body>
+          <Modal.Body style={{ backgroundColor: 'var(--bg-card)' }}>
             <div style={{
               height: '350px',
               overflowY: 'auto',
-              border: '1px solid #dee2e6',
+              border: '1px solid var(--border)',
               borderRadius: '8px',
               padding: '12px',
-              backgroundColor: '#f8f9fa',
+              backgroundColor: 'var(--bg-soft)',
               display: 'flex',
               flexDirection: 'column',
               gap: '10px',
             }}>
-              {/* Original message */}
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <div style={{
                   maxWidth: '70%',
-                  backgroundColor: '#0d6efd',
-                  color: '#fff',
+                  backgroundColor: 'var(--accent)',
+                  color: 'var(--btn-text)',
                   borderRadius: '12px 12px 0 12px',
                   padding: '10px 14px',
                 }}>
-                  <small style={{ fontWeight: 'bold', color: '#cce' }}>You</small>
+                  <small style={{ fontWeight: 'bold', opacity: 0.8 }}>You</small>
                   <p style={{ margin: '4px 0 0', fontSize: '14px' }}>
                     {selectedRequest.message || 'No message'}
                   </p>
-                  <small style={{ fontSize: '11px', color: '#cce' }}>
+                  <small style={{ fontSize: '11px', opacity: 0.7 }}>
                     {new Date(selectedRequest.createdAt).toLocaleString('en-PH')}
                   </small>
                 </div>
               </div>
 
-              {/* Replies */}
               {selectedRequest.replies?.map((reply, i) => (
                 <div
                   key={i}
@@ -150,26 +210,24 @@ const UserRequestScreen = () => {
                 >
                   <div style={{
                     maxWidth: '70%',
-                    backgroundColor: reply.sender === 'user' ? '#0d6efd' : '#fff',
-                    color: reply.sender === 'user' ? '#fff' : '#000',
-                    border: reply.sender === 'user' ? 'none' : '1px solid #dee2e6',
-                    borderRadius: reply.sender === 'user'
-                      ? '12px 12px 0 12px'
-                      : '12px 12px 12px 0',
+                    backgroundColor: reply.sender === 'user' ? 'var(--accent)' : 'var(--bg-card)',
+                    color: reply.sender === 'user' ? 'var(--btn-text)' : 'var(--text-main)',
+                    border: reply.sender === 'user' ? 'none' : '1px solid var(--border)',
+                    borderRadius: reply.sender === 'user' ? '12px 12px 0 12px' : '12px 12px 12px 0',
                     padding: '10px 14px',
                   }}>
                     <small style={{
                       fontWeight: 'bold',
-                      color: reply.sender === 'user' ? '#cce' : '#0d6efd',
+                      opacity: reply.sender === 'user' ? 0.8 : 1,
+                      color: reply.sender === 'user' ? 'var(--btn-text)' : 'var(--accent)',
                     }}>
                       {reply.sender === 'user' ? 'You' : '👤 Admin'}
                     </small>
-                    <p style={{ margin: '4px 0 0', fontSize: '14px' }}>
-                      {reply.message}
-                    </p>
+                    <p style={{ margin: '4px 0 0', fontSize: '14px' }}>{reply.message}</p>
                     <small style={{
                       fontSize: '11px',
-                      color: reply.sender === 'user' ? '#cce' : '#aaa',
+                      opacity: 0.7,
+                      color: reply.sender === 'user' ? 'var(--btn-text)' : 'var(--text-muted)',
                     }}>
                       {new Date(reply.createdAt).toLocaleString('en-PH')}
                     </small>
@@ -178,27 +236,59 @@ const UserRequestScreen = () => {
               ))}
             </div>
 
-            {/* REPLY INPUT */}
             <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-              <Form.Control
+              <input
                 type='text'
                 placeholder='Type your message...'
                 value={replyMessage}
                 onChange={(e) => setReplyMessage(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleReply()}
+                style={{
+                  flex: 1,
+                  backgroundColor: 'var(--bg-soft)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
+                  padding: '10px 14px',
+                  color: 'var(--text-main)',
+                  fontSize: '14px',
+                  outline: 'none',
+                }}
               />
-              <Button
-                variant='primary'
+              <button
                 onClick={handleReply}
                 disabled={loadingReply || !replyMessage.trim()}
+                style={{
+                  backgroundColor: 'var(--accent)',
+                  color: 'var(--btn-text)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '10px 16px',
+                  cursor: loadingReply || !replyMessage.trim() ? 'not-allowed' : 'pointer',
+                  opacity: loadingReply || !replyMessage.trim() ? 0.5 : 1,
+                  fontSize: '16px',
+                  transition: 'opacity 0.2s',
+                }}
               >
                 <FaPaperPlane />
-              </Button>
+              </button>
             </div>
           </Modal.Body>
         )}
-        <Modal.Footer>
-          <Button variant='secondary' onClick={() => setShowModal(false)}>Close</Button>
+        <Modal.Footer style={{ backgroundColor: 'var(--bg-card)', borderTop: '1px solid var(--border)' }}>
+          <button
+            onClick={() => setShowModal(false)}
+            style={{
+              backgroundColor: 'transparent',
+              color: 'var(--text-muted)',
+              border: '1px solid var(--border)',
+              borderRadius: '8px',
+              padding: '8px 20px',
+              cursor: 'pointer',
+              fontWeight: '600',
+            }}
+          >
+            Close
+          </button>
         </Modal.Footer>
       </Modal>
     </div>

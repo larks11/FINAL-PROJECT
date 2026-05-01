@@ -4,13 +4,16 @@ import { useGetProductsQuery } from '../slices/productsApiSlice';
 import Product from '../components/Product';
 import Loader from '../components/Loader';
 import Message from '../components/Message';
-import Paginate from '../components/Paginate';
-import ProductCarousel from '../components/ProductCarousel';
 import Meta from '../components/Meta';
+import ProductCarousel from '../components/ProductCarousel';
+
+const CATEGORIES_PER_PAGE = 4;
 
 const HomeScreen = () => {
   const { pageNumber, keyword } = useParams();
   const { data, isLoading, error } = useGetProductsQuery({ keyword, pageNumber });
+
+  const [categoryPage, setCategoryPage] = useState(1);
 
   const groupByCategory = (products) => {
     return products.reduce((groups, product) => {
@@ -25,9 +28,17 @@ const HomeScreen = () => {
     PHONES: '📱',
     LAPTOP: '💻',
     TABLET: '📟',
-    ACCESSORIES: '🎧',
+    AIRPODS: '🎧',
+    'POWER BANK': '🔋',
+    HEADPHONES: '🎵',
+    ACCESSORIES: '🛍️',
     Others: '📦',
   };
+
+  // Reset to page 1 when keyword changes
+  useEffect(() => {
+    setCategoryPage(1);
+  }, [keyword]);
 
   return (
     <>
@@ -80,49 +91,135 @@ const HomeScreen = () => {
             }} />
           </div>
 
-          {/* CATEGORY SECTIONS */}
-          {Object.entries(groupByCategory(data.products)).map(([category, products]) => (
-            <div key={category} style={{ marginBottom: '48px' }}>
+          {/* CATEGORY PAGINATION */}
+          {(() => {
+            const grouped = groupByCategory(data.products);
+            const allCategories = Object.entries(grouped);
+            const totalCategoryPages = Math.ceil(allCategories.length / CATEGORIES_PER_PAGE);
+            const startIdx = (categoryPage - 1) * CATEGORIES_PER_PAGE;
+            const visibleCategories = allCategories.slice(startIdx, startIdx + CATEGORIES_PER_PAGE);
 
-              {/* CATEGORY LABEL */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                marginBottom: '20px',
-                paddingBottom: '12px',
-                borderBottom: '2px solid var(--border)',
-              }}>
-                <span style={{ fontSize: '22px' }}>
-                  {categoryIcons[category] || '📦'}
-                </span>
-                <h4 style={{
-                  margin: 0,
-                  fontWeight: '800',
-                  fontSize: '16px',
-                  letterSpacing: '2px',
-                  textTransform: 'uppercase',
-                  color: 'var(--accent)',
-                }}>
-                  {category}
-                </h4>
-                <div style={{
-                  flex: 1,
-                  height: '1px',
-                  backgroundColor: 'var(--border)',
-                  marginLeft: '8px',
-                }} />
-              </div>
+            return (
+              <>
+                {/* CATEGORY SECTIONS */}
+                {visibleCategories.map(([category, products]) => (
+                  <div key={category} style={{ marginBottom: '48px' }}>
+                    {/* CATEGORY LABEL */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      marginBottom: '20px',
+                      paddingBottom: '12px',
+                      borderBottom: '2px solid var(--border)',
+                    }}>
+                      <span style={{ fontSize: '22px' }}>
+                        {categoryIcons[category] || '📦'}
+                      </span>
+                      <h4 style={{
+                        margin: 0,
+                        fontWeight: '800',
+                        fontSize: '16px',
+                        letterSpacing: '2px',
+                        textTransform: 'uppercase',
+                        color: 'var(--accent)',
+                      }}>
+                        {category}
+                      </h4>
+                      <div style={{
+                        flex: 1,
+                        height: '1px',
+                        backgroundColor: 'var(--border)',
+                        marginLeft: '8px',
+                      }} />
+                    </div>
 
-              <CategoryCarousel category={category} currentProducts={products} />
-            </div>
-          ))}
+                    <CategoryCarousel category={category} currentProducts={products} />
+                  </div>
+                ))}
 
-          <Paginate
-            pages={data.pages}
-            page={data.page}
-            keyword={keyword ? keyword : ''}
-          />
+                {/* CATEGORY PAGE CONTROLS */}
+                {totalCategoryPages > 1 && (
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    gap: '12px',
+                    margin: '32px 0 48px',
+                  }}>
+                    <button
+                      onClick={() => {
+                        setCategoryPage((p) => p - 1);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      disabled={categoryPage === 1}
+                      style={{
+                        background: categoryPage === 1 ? 'var(--border)' : 'var(--accent)',
+                        color: categoryPage === 1 ? 'var(--text-muted)' : 'var(--btn-text)',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '8px 20px',
+                        fontWeight: '700',
+                        fontSize: '14px',
+                        cursor: categoryPage === 1 ? 'not-allowed' : 'pointer',
+                        opacity: categoryPage === 1 ? 0.5 : 1,
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      ← Prev
+                    </button>
+
+                    {/* PAGE NUMBER BUTTONS */}
+                    {Array.from({ length: totalCategoryPages }, (_, i) => i + 1).map((num) => (
+                      <button
+                        key={num}
+                        onClick={() => {
+                          setCategoryPage(num);
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        style={{
+                          background: categoryPage === num ? 'var(--accent)' : 'transparent',
+                          color: categoryPage === num ? 'var(--btn-text)' : 'var(--accent)',
+                          border: '2px solid var(--accent)',
+                          borderRadius: '8px',
+                          padding: '8px 14px',
+                          fontWeight: '700',
+                          fontSize: '14px',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          minWidth: '40px',
+                        }}
+                      >
+                        {num}
+                      </button>
+                    ))}
+
+                    <button
+                      onClick={() => {
+                        setCategoryPage((p) => p + 1);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      disabled={categoryPage === totalCategoryPages}
+                      style={{
+                        background: categoryPage === totalCategoryPages ? 'var(--border)' : 'var(--accent)',
+                        color: categoryPage === totalCategoryPages ? 'var(--text-muted)' : 'var(--btn-text)',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '8px 20px',
+                        fontWeight: '700',
+                        fontSize: '14px',
+                        cursor: categoryPage === totalCategoryPages ? 'not-allowed' : 'pointer',
+                        opacity: categoryPage === totalCategoryPages ? 0.5 : 1,
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      Next →
+                    </button>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </>
       )}
     </>
@@ -196,7 +293,6 @@ const CategoryCarousel = ({ category, currentProducts }) => {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
       <ArrowBtn onClick={prev} disabled={!canPrev}>‹</ArrowBtn>
-
       <div style={{ display: 'flex', overflow: 'hidden', width: '100%', gap: '0' }}>
         {visibleProducts.map((product) => (
           <div
@@ -213,7 +309,6 @@ const CategoryCarousel = ({ category, currentProducts }) => {
           </div>
         ))}
       </div>
-
       <ArrowBtn onClick={next} disabled={!canNext}>›</ArrowBtn>
     </div>
   );

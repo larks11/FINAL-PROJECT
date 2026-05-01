@@ -11,6 +11,15 @@ export const productsApiSlice = apiSlice.injectEndpoints({
       keepUnusedDataFor: 5,
       providesTags: ['Products'],
     }),
+    // ✅ BAG-ONG: Admin fetch — makita tanan including archived
+    getAdminProducts: builder.query({
+      query: ({ pageNumber } = {}) => ({
+        url: `${PRODUCTS_URL}/admin/all`,
+        params: { pageNumber },
+      }),
+      keepUnusedDataFor: 5,
+      providesTags: ['Products'],
+    }),
     getProductDetails: builder.query({
       query: (productId) => ({
         url: `${PRODUCTS_URL}/${productId}`,
@@ -131,11 +140,19 @@ export const productsApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['MyRequests'],
     }),
+    toggleArchiveProduct: builder.mutation({
+      query: (id) => ({
+        url: `${PRODUCTS_URL}/${id}/archive`,
+        method: 'PUT',
+      }),
+      invalidatesTags: ['Products'],
+    }),
   }),
 });
 
 export const {
   useGetProductsQuery,
+  useGetAdminProductsQuery, // ✅ BAG-ONG
   useGetProductDetailsQuery,
   useGetProductsByCategoryQuery,
   useCheckUserOrderQuery,
@@ -153,4 +170,5 @@ export const {
   useMarkReplySeenMutation,
   useReplyToRequestMutation,
   useUserReplyToRequestMutation,
+  useToggleArchiveProductMutation,
 } = productsApiSlice;

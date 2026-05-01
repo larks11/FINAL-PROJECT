@@ -1,37 +1,31 @@
 import { useState } from 'react';
-import { Table, Button, Row, Col, Modal, Form, InputGroup } from 'react-bootstrap';
-import { FaEdit, FaPlus, FaTrash, FaSearch } from 'react-icons/fa';
+import { Table, Button, Row, Col, Modal, Form, InputGroup, Badge } from 'react-bootstrap';
+import { FaEdit, FaPlus, FaSearch, FaArchive, FaBoxOpen } from 'react-icons/fa';
 import { Link, useParams } from 'react-router-dom';
 import Message from '../../components/Message';
 import Loader from '../../components/Loader';
 import Paginate from '../../components/Paginate';
 import {
-  useGetProductsQuery,
-  useDeleteProductMutation,
+  useGetAdminProductsQuery,
   useCreateProductMutation,
   useUpdateProductMutation,
   useUploadProductImageMutation,
+  useToggleArchiveProductMutation,
 } from '../../slices/productsApiSlice';
 import { toast } from 'react-toastify';
 
 const ProductListScreen = () => {
   const { pageNumber } = useParams();
+  const { data, isLoading, error, refetch } = useGetAdminProductsQuery({ pageNumber });
 
-  const { data, isLoading, error } = useGetProductsQuery({ pageNumber });
+  const [createProduct, { isLoading: loadingCreate }] = useCreateProductMutation();
+  const [updateProduct, { isLoading: loadingUpdate }] = useUpdateProductMutation();
+  const [uploadProductImage, { isLoading: loadingUpload }] = useUploadProductImageMutation();
+  const [toggleArchive, { isLoading: loadingArchive }] = useToggleArchiveProductMutation();
 
-  const [deleteProduct, { isLoading: loadingDelete }] =
-    useDeleteProductMutation();
-  const [createProduct, { isLoading: loadingCreate }] =
-    useCreateProductMutation();
-  const [updateProduct, { isLoading: loadingUpdate }] =
-    useUpdateProductMutation();
-  const [uploadProductImage, { isLoading: loadingUpload }] =
-    useUploadProductImageMutation();
-
-  // Search state
   const [searchTerm, setSearchTerm] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
 
-  // Modal state
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
@@ -42,13 +36,9 @@ const ProductListScreen = () => {
   const [description, setDescription] = useState('');
 
   const resetForm = () => {
-    setName('');
-    setPrice('');
-    setImage('');
-    setBrand('');
-    setCategory('');
-    setCountInStock('');
-    setDescription('');
+    setName(''); setPrice(''); setImage('');
+    setBrand(''); setCategory('');
+    setCountInStock(''); setDescription('');
   };
 
   const uploadFileHandler = async (e) => {
@@ -72,13 +62,8 @@ const ProductListScreen = () => {
       const created = await createProduct().unwrap();
       await updateProduct({
         productId: created._id,
-        name,
-        price: Number(price),
-        image,
-        brand,
-        category,
-        countInStock: Number(countInStock),
-        description,
+        name, price: Number(price), image, brand,
+        category, countInStock: Number(countInStock), description,
       }).unwrap();
       toast.success('Product created successfully!');
       setShowModal(false);
@@ -88,28 +73,43 @@ const ProductListScreen = () => {
     }
   };
 
-  const deleteHandler = async (id) => {
-    if (window.confirm('Are you sure you want to delete this product?')) {
+  const archiveHandler = async (id, isArchived, productName) => {
+    const action = isArchived ? 'unarchive' : 'archive';
+    if (window.confirm(`Are you sure you want to ${action} "${productName}"?`)) {
       try {
-        await deleteProduct(id);
+        await toggleArchive(id).unwrap();
+        toast.success(`Product ${action}d successfully`);
+        refetch();
       } catch (err) {
         toast.error(err?.data?.message || err.error);
       }
     }
   };
 
-  // Filter products based on search term
-  const filteredProducts = data?.products?.filter((product) =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.brand.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  const allProducts = data?.products || [];
+  const filteredProducts = allProducts
+    .filter((p) => showArchived ? p.isArchived : !p.isArchived)
+    .filter((p) =>
+      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.brand.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+  const soldOutCount = allProducts.filter((p) => p.countInStock === 0).length;
+  const archivedCount = allProducts.filter((p) => p.isArchived).length;
 
   return (
     <>
       <Row className='align-items-center'>
         <Col>
-          <h1>Products</h1>
+          <h1>
+            Products{' '}
+            {soldOutCount > 0 && (
+              <Badge bg='danger' style={{ fontSize: '13px', marginLeft: '8px' }}>
+                {soldOutCount} Sold Out
+              </Badge>
+            )}
+          </h1>
         </Col>
         <Col className='text-end'>
           <Button className='my-3' onClick={() => setShowModal(true)}>
@@ -118,13 +118,33 @@ const ProductListScreen = () => {
         </Col>
       </Row>
 
-      {/* SEARCH BAR */}
+      {/* TOGGLE ARCHIVED */}
+      <Row className='mb-3'>
+        <Col>
+          <Button
+            variant={showArchived ? 'warning' : 'outline-secondary'}
+            size='sm'
+            onClick={() => setShowArchived(!showArchived)}
+            style={{ marginRight: '10px' }}
+          >
+            {showArchived
+              ? <><FaBoxOpen /> Show Active</>
+              : <><FaArchive /> Show Archived ({archivedCount})</>
+            }
+          </Button>
+          {showArchived && (
+            <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
+              Viewing archived/sold-out products — hidden from homepage
+            </span>
+          )}
+        </Col>
+      </Row>
+
+      {/* SEARCH */}
       <Row className='mb-3'>
         <Col md={6}>
           <InputGroup>
-            <InputGroup.Text>
-              <FaSearch />
-            </InputGroup.Text>
+            <InputGroup.Text><FaSearch /></InputGroup.Text>
             <Form.Control
               type='text'
               placeholder='Search by name, category, or brand...'
@@ -132,12 +152,7 @@ const ProductListScreen = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             {searchTerm && (
-              <Button
-                variant='outline-secondary'
-                onClick={() => setSearchTerm('')}
-              >
-                Clear
-              </Button>
+              <Button variant='outline-secondary' onClick={() => setSearchTerm('')}>Clear</Button>
             )}
           </InputGroup>
         </Col>
@@ -150,12 +165,10 @@ const ProductListScreen = () => {
         </Col>
       </Row>
 
-      {(loadingCreate || loadingUpdate || loadingDelete) && <Loader />}
+      {(loadingCreate || loadingUpdate || loadingArchive) && <Loader />}
 
-      {isLoading ? (
-        <Loader />
-      ) : error ? (
-        <Message variant='danger'>{error.data.message}</Message>
+      {isLoading ? <Loader /> : error ? (
+        <Message variant='danger'>{error?.data?.message}</Message>
       ) : (
         <>
           <Table striped bordered hover responsive className='table-sm'>
@@ -164,50 +177,68 @@ const ProductListScreen = () => {
                 <th>ID</th>
                 <th>NAME</th>
                 <th>PRICE</th>
+                <th>STOCK</th>
                 <th>CATEGORY</th>
                 <th>BRAND</th>
-                <th></th>
+                <th>STATUS</th>
+                <th>ACTIONS</th>
               </tr>
             </thead>
             <tbody>
               {filteredProducts.length > 0 ? (
                 filteredProducts.map((product) => (
-                  <tr key={product._id}>
+                  <tr key={product._id} style={{ opacity: product.isArchived ? 0.6 : 1 }}>
                     <td>{product._id}</td>
                     <td>{product.name}</td>
                     <td>₱{product.price.toLocaleString('en-PH')}</td>
+                    <td>
+                      <span style={{
+                        fontWeight: '700',
+                        color: product.countInStock === 0 ? '#e74c3c'
+                          : product.countInStock <= 5 ? '#e67e22' : '#2ecc71',
+                      }}>
+                        {product.countInStock === 0 ? 'SOLD OUT' : product.countInStock}
+                      </span>
+                    </td>
                     <td>{product.category}</td>
                     <td>{product.brand}</td>
                     <td>
-                      <Button
-                        as={Link}
-                        to={`/admin/product/${product._id}/edit`}
-                        variant='light'
-                        className='btn-sm mx-2'
-                      >
+                      {product.isArchived ? (
+                        <Badge bg='secondary'>Archived</Badge>
+                      ) : product.countInStock === 0 ? (
+                        <Badge bg='danger'>Sold Out</Badge>
+                      ) : product.countInStock <= 5 ? (
+                        <Badge bg='warning' text='dark'>Low Stock</Badge>
+                      ) : (
+                        <Badge bg='success'>Active</Badge>
+                      )}
+                    </td>
+                    <td>
+                      <Button as={Link} to={`/admin/product/${product._id}/edit`}
+                        variant='light' className='btn-sm mx-1' title='Edit'>
                         <FaEdit />
                       </Button>
                       <Button
-                        variant='danger'
-                        className='btn-sm'
-                        onClick={() => deleteHandler(product._id)}
+                        variant={product.isArchived ? 'outline-success' : 'outline-warning'}
+                        className='btn-sm mx-1'
+                        onClick={() => archiveHandler(product._id, product.isArchived, product.name)}
+                        title={product.isArchived ? 'Unarchive' : 'Archive'}
                       >
-                        <FaTrash style={{ color: 'white' }} />
+                        {product.isArchived ? <FaBoxOpen /> : <FaArchive />}
                       </Button>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan='6' className='text-center'>
-                    No products found matching "{searchTerm}"
+                  <td colSpan='8' className='text-center'>
+                    {searchTerm ? `No products found matching "${searchTerm}"` : 'No products'}
                   </td>
                 </tr>
               )}
             </tbody>
           </Table>
 
-          {/* Hide pagination when searching */}
           {!searchTerm && (
             <Paginate pages={data.pages} page={data.page} isAdmin={true} />
           )}
@@ -215,12 +246,7 @@ const ProductListScreen = () => {
       )}
 
       {/* CREATE PRODUCT MODAL */}
-      <Modal
-        show={showModal}
-        onHide={() => { setShowModal(false); resetForm(); }}
-        size='lg'
-        centered
-      >
+      <Modal show={showModal} onHide={() => { setShowModal(false); resetForm(); }} size='lg' centered>
         <Modal.Header closeButton>
           <Modal.Title><FaPlus /> Create New Product</Modal.Title>
         </Modal.Header>
@@ -228,115 +254,54 @@ const ProductListScreen = () => {
           <Form>
             <Row>
               <Col md={6}>
-                <Form.Group className='mb-3' controlId='name'>
+                <Form.Group className='mb-3'>
                   <Form.Label>Product Name</Form.Label>
-                  <Form.Control
-                    type='text'
-                    placeholder='Enter product name'
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
+                  <Form.Control type='text' placeholder='Enter product name' value={name} onChange={(e) => setName(e.target.value)} />
                 </Form.Group>
               </Col>
               <Col md={6}>
-                <Form.Group className='mb-3' controlId='price'>
+                <Form.Group className='mb-3'>
                   <Form.Label>Price (₱)</Form.Label>
-                  <Form.Control
-                    type='number'
-                    placeholder='Enter price'
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                  />
+                  <Form.Control type='number' placeholder='Enter price' value={price} onChange={(e) => setPrice(e.target.value)} />
                 </Form.Group>
               </Col>
             </Row>
-
-            <Form.Group className='mb-3' controlId='image'>
+            <Form.Group className='mb-3'>
               <Form.Label>Image</Form.Label>
-              <Form.Control
-                type='text'
-                placeholder='Image URL'
-                value={image}
-                onChange={(e) => setImage(e.target.value)}
-                className='mb-2'
-              />
+              <Form.Control type='text' placeholder='Image URL' value={image} onChange={(e) => setImage(e.target.value)} className='mb-2' />
               <Form.Control type='file' onChange={uploadFileHandler} />
               {loadingUpload && <Loader />}
               {image && (
-                <img
-                  src={image}
-                  alt='preview'
-                  style={{
-                    marginTop: '10px',
-                    height: '100px',
-                    objectFit: 'contain',
-                    border: '1px solid #eee',
-                    borderRadius: '8px',
-                    padding: '4px',
-                  }}
-                />
+                <img src={image} alt='preview' style={{ marginTop: '10px', height: '100px', objectFit: 'contain', border: '1px solid #eee', borderRadius: '8px', padding: '4px' }} />
               )}
             </Form.Group>
-
             <Row>
               <Col md={6}>
-                <Form.Group className='mb-3' controlId='brand'>
+                <Form.Group className='mb-3'>
                   <Form.Label>Brand</Form.Label>
-                  <Form.Control
-                    type='text'
-                    placeholder='Enter brand'
-                    value={brand}
-                    onChange={(e) => setBrand(e.target.value)}
-                  />
+                  <Form.Control type='text' placeholder='Enter brand' value={brand} onChange={(e) => setBrand(e.target.value)} />
                 </Form.Group>
               </Col>
               <Col md={6}>
-                <Form.Group className='mb-3' controlId='category'>
+                <Form.Group className='mb-3'>
                   <Form.Label>Category</Form.Label>
-                  <Form.Control
-                    type='text'
-                    placeholder='e.g. PHONES, LAPTOP'
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                  />
+                  <Form.Control type='text' placeholder='e.g. PHONES, LAPTOP' value={category} onChange={(e) => setCategory(e.target.value)} />
                 </Form.Group>
               </Col>
             </Row>
-
-            <Form.Group className='mb-3' controlId='countInStock'>
+            <Form.Group className='mb-3'>
               <Form.Label>Count In Stock</Form.Label>
-              <Form.Control
-                type='number'
-                placeholder='Enter stock quantity'
-                value={countInStock}
-                onChange={(e) => setCountInStock(e.target.value)}
-              />
+              <Form.Control type='number' placeholder='Enter stock quantity' value={countInStock} onChange={(e) => setCountInStock(e.target.value)} />
             </Form.Group>
-
-            <Form.Group className='mb-3' controlId='description'>
+            <Form.Group className='mb-3'>
               <Form.Label>Description</Form.Label>
-              <Form.Control
-                as='textarea'
-                rows={3}
-                placeholder='Enter product description'
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
+              <Form.Control as='textarea' rows={3} placeholder='Enter product description' value={description} onChange={(e) => setDescription(e.target.value)} />
             </Form.Group>
           </Form>
         </Modal.Body>
         <Modal.Footer>
-          <Button
-            variant='secondary'
-            onClick={() => { setShowModal(false); resetForm(); }}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant='primary'
-            onClick={createProductHandler}
-            disabled={loadingCreate || loadingUpdate || loadingUpload}
-          >
+          <Button variant='secondary' onClick={() => { setShowModal(false); resetForm(); }}>Cancel</Button>
+          <Button variant='primary' onClick={createProductHandler} disabled={loadingCreate || loadingUpdate || loadingUpload}>
             {loadingCreate || loadingUpdate ? 'Creating...' : 'Create Product'}
           </Button>
         </Modal.Footer>

@@ -2,9 +2,11 @@ import express from 'express';
 const router = express.Router();
 import {
   getProducts,
+  getAdminProducts,
   getProductById,
   createProduct,
   updateProduct,
+  toggleArchiveProduct,
   deleteProduct,
   createProductReview,
   getTopProducts,
@@ -26,6 +28,7 @@ import checkObjectId from '../middleware/checkObjectId.js';
 
 router.route('/').get(getProducts).post(protect, admin, createProduct);
 router.get('/top', getTopProducts);
+router.get('/admin/all', protect, admin, getAdminProducts); // ✅ BAG-ONG
 router.get('/category/:category', getProductsByCategory);
 router.post('/request', protect, requestProduct);
 router.get('/my-requests', protect, getMyRequests);
@@ -39,6 +42,7 @@ router.delete('/requests/all', protect, admin, deleteAllRequests);
 router.delete('/requests/:id', protect, admin, deleteRequest);
 router.route('/:id/reviews').post(protect, checkObjectId, createProductReview);
 router.get('/:id/check-order', protect, checkObjectId, checkUserOrder);
+router.put('/:id/archive', protect, admin, checkObjectId, toggleArchiveProduct); // ✅ BAG-ONG
 router
   .route('/:id')
   .get(checkObjectId, getProductById)
