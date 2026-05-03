@@ -174,7 +174,7 @@ const ProductListScreen = () => {
           <Table striped bordered hover responsive className='table-sm'>
             <thead>
               <tr>
-                <th>ID</th>
+                <th>#</th>
                 <th>NAME</th>
                 <th>PRICE</th>
                 <th>STOCK</th>
@@ -186,9 +186,11 @@ const ProductListScreen = () => {
             </thead>
             <tbody>
               {filteredProducts.length > 0 ? (
-                filteredProducts.map((product) => (
+                filteredProducts.map((product, index) => (
                   <tr key={product._id} style={{ opacity: product.isArchived ? 0.6 : 1 }}>
-                    <td>{product._id}</td>
+                    <td style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: '600' }}>
+                      {index + 1}
+                    </td>
                     <td>{product.name}</td>
                     <td>₱{product.price.toLocaleString('en-PH')}</td>
                     <td>
