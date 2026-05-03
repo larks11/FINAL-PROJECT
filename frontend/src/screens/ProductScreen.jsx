@@ -38,10 +38,8 @@ const ProductScreen = () => {
     skip: !userInfo || userInfo?.isAdmin,
   });
   const hasPurchased = orderCheck?.hasPurchased;
-
   const displayImage = selectedColor?.image || product?.image;
 
-  // ✅ FIXED: gi-include ang selected color image ug name sa cart item
   const addToCartHandler = () => {
     dispatch(addToCart({
       ...product,
@@ -99,7 +97,7 @@ const ProductScreen = () => {
           <Meta title={product.name} description={product.description} />
 
           <Row className='mt-4'>
-            {/* PRODUCT IMAGE */}
+            {/* LEFT — IMAGE + COLOR THUMBNAILS + DESCRIPTION */}
             <Col md={6}>
               <Image
                 src={displayImage}
@@ -126,7 +124,6 @@ const ProductScreen = () => {
                   >
                     <img src={product.image} alt='default' style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
-
                   {product.colorVariants.map((variant, i) => (
                     <div
                       key={i}
@@ -142,9 +139,40 @@ const ProductScreen = () => {
                   ))}
                 </div>
               )}
+
+              {/* DESCRIPTION — UBOS SA PICTURE */}
+              <div style={{
+                marginTop: '24px',
+                backgroundColor: 'var(--bg-card)',
+                border: '1px solid var(--border)',
+                borderRadius: '12px',
+                padding: '16px 20px',
+              }}>
+                <h5 style={{
+                  color: 'var(--accent)',
+                  fontWeight: '800',
+                  fontSize: '14px',
+                  letterSpacing: '1px',
+                  textTransform: 'uppercase',
+                  marginBottom: '10px',
+                  paddingBottom: '8px',
+                  borderBottom: '2px solid var(--border)',
+                }}>
+                  📋 Description
+                </h5>
+                <p style={{
+                  color: 'var(--text-muted)',
+                  fontSize: '14px',
+                  lineHeight: '1.7',
+                  margin: 0,
+                  whiteSpace: 'pre-line',
+                }}>
+                  {product.description}
+                </p>
+              </div>
             </Col>
 
-            {/* PRODUCT INFO */}
+            {/* PRODUCT INFO — gi-remove ang description diri */}
             <Col md={3}>
               <ListGroup variant='flush'>
                 <ListGroup.Item>
@@ -158,7 +186,6 @@ const ProductScreen = () => {
                     {new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(product.price)}
                   </strong>
                 </ListGroup.Item>
-                <ListGroup.Item>{product.description}</ListGroup.Item>
 
                 {/* COLOR SELECTOR */}
                 {product.colorVariants && product.colorVariants.length > 0 && (
@@ -170,8 +197,6 @@ const ProductScreen = () => {
                       </strong>
                     </p>
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-
-                      {/* DEFAULT button */}
                       <div
                         onClick={() => setSelectedColor(null)}
                         style={{
@@ -186,8 +211,6 @@ const ProductScreen = () => {
                         <img src={product.image} alt='default' style={{ width: '24px', height: '24px', objectFit: 'cover', borderRadius: '3px' }} />
                         Default
                       </div>
-
-                      {/* COLOR VARIANT BUTTONS */}
                       {product.colorVariants.map((variant, i) => (
                         <div
                           key={i}
@@ -227,7 +250,6 @@ const ProductScreen = () => {
             <Col md={3}>
               <Card style={{ border: 'none', boxShadow: '0 6px 20px rgba(0,0,0,0.2)', borderRadius: '10px' }}>
                 <ListGroup variant='flush'>
-
                   <ListGroup.Item>
                     <Row>
                       <Col>Price:</Col>
@@ -250,7 +272,6 @@ const ProductScreen = () => {
                     </Row>
                   </ListGroup.Item>
 
-                  {/* Selected color display */}
                   {product.colorVariants && product.colorVariants.length > 0 && (
                     <ListGroup.Item>
                       <Row>
@@ -272,7 +293,6 @@ const ProductScreen = () => {
                     </ListGroup.Item>
                   )}
 
-                  {/* ADMIN VIEW */}
                   {userInfo && userInfo.isAdmin ? (
                     <ListGroup.Item>
                       <Button

@@ -6,6 +6,10 @@ const Product = ({ product }) => {
   const [hoveredColor, setHoveredColor] = useState(null);
   const displayImage = hoveredColor?.image || product.image;
 
+  // NEW badge logic — 2 days = 48 hours
+  const isNew = product.createdAt &&
+    (new Date() - new Date(product.createdAt)) < 48 * 60 * 60 * 1000;
+
   return (
     <div
       className='product-card'
@@ -33,7 +37,26 @@ const Product = ({ product }) => {
       }}
     >
       {/* BADGES */}
-      <div style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 10, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+      <div style={{
+        position: 'absolute', top: '12px', left: '12px',
+        zIndex: 10, display: 'flex', flexDirection: 'column', gap: '4px',
+      }}>
+        {/* NEW BADGE */}
+        {isNew && product.countInStock > 0 && (
+          <span style={{
+            backgroundColor: '#27ae60',
+            color: '#fff',
+            fontSize: '10px',
+            fontWeight: '800',
+            padding: '3px 8px',
+            borderRadius: '20px',
+            letterSpacing: '1px',
+            boxShadow: '0 2px 6px rgba(39,174,96,0.5)',
+            animation: 'pulse 1.5s infinite',
+          }}>
+            ✨ NEW
+          </span>
+        )}
         {product.countInStock === 0 && (
           <span style={{
             backgroundColor: '#e74c3c', color: '#fff',
@@ -125,8 +148,6 @@ const Product = ({ product }) => {
           }}>
             ₱{product.price.toLocaleString('en-PH')}
           </span>
-
-          {/* ✅ className='view-btn' — CSS override sa index.css */}
           <Link
             to={`/product/${product._id}`}
             className='view-btn'
