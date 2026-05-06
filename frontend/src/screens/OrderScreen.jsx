@@ -21,7 +21,6 @@ const formatTime = (date) =>
     hour: '2-digit', minute: '2-digit', hour12: true,
   });
 
-// ── Build delivery steps from DB data ───────────────────────────────────────
 const getDeliverySteps = (order) => {
   if (order.isCancelled) {
     return [
@@ -58,11 +57,9 @@ const getDeliverySteps = (order) => {
 
   const currentRank = statusRank[order.orderStatus] ?? 0;
 
-  // Compute scheduled future times for steps not yet reached
   const pickedUpTime = order.pickedUpAt ? new Date(order.pickedUpAt) : null;
   const inTransitTime = order.inTransitAt ? new Date(order.inTransitAt) : null;
   const outForDeliveryTime = order.outForDeliveryAt ? new Date(order.outForDeliveryAt) : null;
-  const deliveredTime = order.deliveredAt ? new Date(order.deliveredAt) : null;
 
   const steps = [
     {
@@ -83,35 +80,22 @@ const getDeliverySteps = (order) => {
     {
       label: 'In Transit – Ormoc Distribution Hub',
       done: currentRank >= 3,
-      time:
-        findHistory('In Transit') ||
-        (inTransitTime ? formatTime(inTransitTime) : null),
-      scheduled: currentRank < 3 && inTransitTime ? formatTime(inTransitTime) : null,
+      time: findHistory('In Transit') || (inTransitTime ? formatTime(inTransitTime) : null),
     },
     {
       label: `Arrived – ${city} Delivery Hub`,
       done: currentRank >= 4,
-      time:
-        findHistory('Out for Delivery') ||
-        (outForDeliveryTime ? formatTime(outForDeliveryTime) : null),
-      scheduled: currentRank < 4 && outForDeliveryTime ? formatTime(outForDeliveryTime) : null,
+      time: findHistory('Out for Delivery') || (outForDeliveryTime ? formatTime(outForDeliveryTime) : null),
     },
     {
       label: `Out for Delivery – ${city}`,
       done: currentRank >= 4,
-      time:
-        findHistory('Out for Delivery') ||
-        (outForDeliveryTime ? formatTime(outForDeliveryTime) : null),
-      scheduled: currentRank < 4 && outForDeliveryTime ? formatTime(outForDeliveryTime) : null,
+      time: findHistory('Out for Delivery') || (outForDeliveryTime ? formatTime(outForDeliveryTime) : null),
     },
     {
       label: `Delivered – ${order.shippingAddress?.address}, ${city}`,
       done: order.isDelivered || currentRank >= 5,
-      time:
-        findHistory('Delivered') ||
-        (order.isDelivered && order.deliveredAt ? formatTime(order.deliveredAt) : null),
-      scheduled:
-        !order.isDelivered && deliveredTime ? formatTime(deliveredTime) : null,
+      time: findHistory('Delivered') || (order.isDelivered && order.deliveredAt ? formatTime(order.deliveredAt) : null),
       final: true,
     },
   ];
@@ -127,7 +111,6 @@ const getDeliverySteps = (order) => {
 
 const getEstimatedDelivery = (order) => {
   if (order.deliveredAt && !order.isDelivered) {
-    // Use the scheduled deliveredAt from DB
     return new Date(order.deliveredAt).toLocaleDateString('en-PH', {
       month: 'long', day: 'numeric', year: 'numeric',
     });
@@ -144,8 +127,6 @@ const canCancel = (order, userInfo) => {
   if (order.isCancelled || order.isDelivered || userInfo?.isAdmin) return false;
   return order.orderStatus === 'Order Created';
 };
-
-// ────────────────────────────────────────────────────────────────────────────
 
 const OrderScreen = () => {
   const { id: orderId } = useParams();
@@ -204,7 +185,6 @@ const OrderScreen = () => {
         Order Tracking
       </h1>
 
-      {/* CANCELLED BANNER */}
       {order.isCancelled && (
         <Message variant='danger'>
           ❌ This order was cancelled on{' '}
@@ -213,7 +193,6 @@ const OrderScreen = () => {
         </Message>
       )}
 
-      {/* ESTIMATED DELIVERY BANNER */}
       {!order.isCancelled && !order.isDelivered && (
         <div style={{
           backgroundColor: 'rgba(212,175,55,0.08)',
@@ -235,7 +214,6 @@ const OrderScreen = () => {
         </div>
       )}
 
-      {/* DELIVERY PROGRESS */}
       <Card className='mb-4'>
         <Card.Body>
           <h4 style={{ color: 'var(--accent)', marginBottom: '24px', fontWeight: '700' }}>
@@ -312,16 +290,10 @@ const OrderScreen = () => {
                     )}
                   </div>
 
+                  {/* ✅ Only show time if step is done or current */}
                   {(step.done || step.current) && step.time && (
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
                       🕐 {step.time}
-                    </div>
-                  )}
-
-                  {/* Show estimated time for future steps after pickup */}
-                  {!step.done && !step.current && step.scheduled && (
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', opacity: 0.6 }}>
-                      📅 Est. {step.scheduled}
                     </div>
                   )}
                 </div>
@@ -335,7 +307,6 @@ const OrderScreen = () => {
         <Col md={8}>
           <ListGroup variant='flush'>
 
-            {/* SHIPPING */}
             <ListGroup.Item>
               <h2>Shipping</h2>
               <p><strong>Name: </strong>{order.user.name}</p>
@@ -356,7 +327,6 @@ const OrderScreen = () => {
               )}
             </ListGroup.Item>
 
-            {/* PAYMENT */}
             <ListGroup.Item>
               <h2>Payment Information</h2>
               <p><strong>Method: </strong>{order.paymentMethod}</p>
@@ -381,7 +351,6 @@ const OrderScreen = () => {
               )}
             </ListGroup.Item>
 
-            {/* ORDER ITEMS */}
             <ListGroup.Item>
               <h2>Order Items</h2>
               {order.orderItems.length === 0 ? (
@@ -409,7 +378,6 @@ const OrderScreen = () => {
           </ListGroup>
         </Col>
 
-        {/* ORDER SUMMARY */}
         <Col md={4}>
           <Card>
             <ListGroup variant='flush'>
@@ -463,7 +431,6 @@ const OrderScreen = () => {
                 )}
               </ListGroup.Item>
 
-              {/* ── ADMIN CONTROL BUTTONS ── */}
               {userInfo?.isAdmin && !order.isCancelled && !order.isDelivered && (
                 <ListGroup.Item>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -514,7 +481,6 @@ const OrderScreen = () => {
                 </ListGroup.Item>
               )}
 
-              {/* CANCEL BUTTON (user only) */}
               {canCancel(order, userInfo) && (
                 <ListGroup.Item>
                   <Button
@@ -533,7 +499,6 @@ const OrderScreen = () => {
                 </ListGroup.Item>
               )}
 
-              {/* IN TRANSIT NOTICE */}
               {!order.isCancelled && !order.isDelivered &&
                 !canCancel(order, userInfo) && !userInfo?.isAdmin && (
                 <ListGroup.Item>
@@ -556,7 +521,6 @@ const OrderScreen = () => {
         </Col>
       </Row>
 
-      {/* CANCEL MODAL */}
       <Modal show={showCancelModal} onHide={() => setShowCancelModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>Cancel Order</Modal.Title>
