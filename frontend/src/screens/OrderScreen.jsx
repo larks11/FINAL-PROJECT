@@ -6,6 +6,8 @@ import Loader from '../components/Loader';
 import {
   useGetOrderDetailsQuery,
   useCancelOrderMutation,
+  usePrepareOrderMutation,
+  usePickupOrderMutation,
 } from '../slices/ordersApiSlice';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
@@ -19,22 +21,143 @@ const formatTime = (date) =>
     hour: '2-digit', minute: '2-digit', hour12: true,
   });
 
-const seededRandom = (seed) => {
-  const x = Math.sin(seed) * 10000;
-  return x - Math.floor(x);
+// ── Build delivery steps from DB data ───────────────────────────────────────
+const getDeliverySteps = (order) => {
+  if (order.isCancelled) {
+    return [
+      {
+        label: 'Order Created – Ormoc City Main Branch',
+        time: formatTime(order.createdAt),
+        done: true,
+      },
+      {
+        label: 'Order Cancelled',
+        time: formatTime(order.cancelledAt),
+        done: true,
+        cancelled: true,
+      },
+    ];
+  }
+
+  const city = order.shippingAddress?.city || '';
+  const history = order.statusHistory || [];
+
+  const findHistory = (status) => {
+    const h = history.find((h) => h.status === status);
+    return h ? formatTime(h.timestamp) : null;
+  };
+
+  const statusRank = {
+    'Order Created': 0,
+    'Preparing': 1,
+    'Picked Up': 2,
+    'In Transit': 3,
+    'Out for Delivery': 4,
+    'Delivered': 5,
+  };
+
+  const currentRank = statusRank[order.orderStatus] ?? 0;
+
+  // Compute scheduled future times for steps not yet reached
+  const pickedUpTime = order.pickedUpAt ? new Date(order.pickedUpAt) : null;
+  const inTransitTime = order.inTransitAt ? new Date(order.inTransitAt) : null;
+  const outForDeliveryTime = order.outForDeliveryAt ? new Date(order.outForDeliveryAt) : null;
+  const deliveredTime = order.deliveredAt ? new Date(order.deliveredAt) : null;
+
+  const steps = [
+    {
+      label: 'Order Created – Ormoc City Main Branch',
+      done: currentRank >= 0,
+      time: findHistory('Order Created') || formatTime(order.createdAt),
+    },
+    {
+      label: 'Prepared – CELLCOM Ormoc Warehouse',
+      done: currentRank >= 1,
+      time: findHistory('Preparing') || (order.preparedAt ? formatTime(order.preparedAt) : null),
+    },
+    {
+      label: 'Picked Up – Ormoc City Courier',
+      done: currentRank >= 2,
+      time: findHistory('Picked Up') || (pickedUpTime ? formatTime(pickedUpTime) : null),
+    },
+    {
+      label: 'In Transit – Ormoc Distribution Hub',
+      done: currentRank >= 3,
+      time:
+        findHistory('In Transit') ||
+        (inTransitTime ? formatTime(inTransitTime) : null),
+      scheduled: currentRank < 3 && inTransitTime ? formatTime(inTransitTime) : null,
+    },
+    {
+      label: `Arrived – ${city} Delivery Hub`,
+      done: currentRank >= 4,
+      time:
+        findHistory('Out for Delivery') ||
+        (outForDeliveryTime ? formatTime(outForDeliveryTime) : null),
+      scheduled: currentRank < 4 && outForDeliveryTime ? formatTime(outForDeliveryTime) : null,
+    },
+    {
+      label: `Out for Delivery – ${city}`,
+      done: currentRank >= 4,
+      time:
+        findHistory('Out for Delivery') ||
+        (outForDeliveryTime ? formatTime(outForDeliveryTime) : null),
+      scheduled: currentRank < 4 && outForDeliveryTime ? formatTime(outForDeliveryTime) : null,
+    },
+    {
+      label: `Delivered – ${order.shippingAddress?.address}, ${city}`,
+      done: order.isDelivered || currentRank >= 5,
+      time:
+        findHistory('Delivered') ||
+        (order.isDelivered && order.deliveredAt ? formatTime(order.deliveredAt) : null),
+      scheduled:
+        !order.isDelivered && deliveredTime ? formatTime(deliveredTime) : null,
+      final: true,
+    },
+  ];
+
+  let lastReached = -1;
+  steps.forEach((s, i) => { if (s.done) lastReached = i; });
+
+  return steps.map((s, i) => ({
+    ...s,
+    current: i === lastReached && !(s.final && s.done),
+  }));
 };
 
-const getOrderSeed = (orderId) =>
-  orderId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+const getEstimatedDelivery = (order) => {
+  if (order.deliveredAt && !order.isDelivered) {
+    // Use the scheduled deliveredAt from DB
+    return new Date(order.deliveredAt).toLocaleDateString('en-PH', {
+      month: 'long', day: 'numeric', year: 'numeric',
+    });
+  }
+  if (order.isDelivered && order.deliveredAt) {
+    return new Date(order.deliveredAt).toLocaleDateString('en-PH', {
+      month: 'long', day: 'numeric', year: 'numeric',
+    });
+  }
+  return 'To be determined';
+};
+
+const canCancel = (order, userInfo) => {
+  if (order.isCancelled || order.isDelivered || userInfo?.isAdmin) return false;
+  return order.orderStatus === 'Order Created';
+};
+
+// ────────────────────────────────────────────────────────────────────────────
 
 const OrderScreen = () => {
   const { id: orderId } = useParams();
   const { userInfo } = useSelector((state) => state.auth);
 
   const { data: order, isLoading, error, refetch } = useGetOrderDetailsQuery(orderId);
-  const [cancelOrder, { isLoading: loadingCancel }] = useCancelOrderMutation();
+  const [cancelOrder, { isLoading: loadingCancel }]   = useCancelOrderMutation();
+  const [prepareOrder, { isLoading: loadingPrepare }] = usePrepareOrderMutation();
+  const [pickupOrder, { isLoading: loadingPickup }]   = usePickupOrderMutation();
+
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [cancelReason, setCancelReason] = useState('');
+  const [cancelReason, setCancelReason]       = useState('');
 
   const handleCancel = async () => {
     if (!cancelReason.trim()) {
@@ -51,73 +174,24 @@ const OrderScreen = () => {
     }
   };
 
-  const getDeliverySteps = (order) => {
-    const created = new Date(order.createdAt);
-    const seed = getOrderSeed(order._id);
-    const deliveryDays = 1 + Math.floor(seededRandom(seed) * 3);
-    const totalHours = deliveryDays * 24;
-    const r = (i) => seededRandom(seed + i);
-
-    const stepOffsets = [
-      0,
-      0.5 + r(1) * 1,
-      1 + r(2) * 2,
-      3 + r(3) * 3,
-      totalHours * 0.5 + r(4) * 3,
-      totalHours * 0.75 + r(5) * 2,
-      totalHours + r(6) * 1,
-    ];
-
-    const addHours = (base, hours) =>
-      new Date(base.getTime() + hours * 60 * 60 * 1000);
-
-    const now = new Date();
-
-    if (order.isCancelled) {
-      return [
-        { label: 'Order Created – Ormoc City Main Branch', time: formatTime(created), done: true },
-        { label: 'Order Cancelled', time: formatTime(order.cancelledAt), done: true, cancelled: true },
-      ];
+  const handlePrepare = async () => {
+    try {
+      await prepareOrder(orderId).unwrap();
+      toast.success('Order is now being prepared!');
+      refetch();
+    } catch (err) {
+      toast.error(err?.data?.message || err.error);
     }
-
-    const steps = [
-      { label: 'Order Created – Ormoc City Main Branch', scheduledTime: addHours(created, stepOffsets[0]), done: true },
-      { label: 'Prepared – CELLCOM Ormoc Warehouse', scheduledTime: addHours(created, stepOffsets[1]), done: now >= addHours(created, stepOffsets[1]) },
-      { label: 'Picked Up – Ormoc City Courier', scheduledTime: addHours(created, stepOffsets[2]), done: now >= addHours(created, stepOffsets[2]) },
-      { label: 'In Transit – Ormoc Distribution Hub', scheduledTime: addHours(created, stepOffsets[3]), done: now >= addHours(created, stepOffsets[3]) },
-      { label: `Arrived – ${order.shippingAddress.city} Delivery Hub`, scheduledTime: addHours(created, stepOffsets[4]), done: now >= addHours(created, stepOffsets[4]) },
-      { label: `Out for Delivery – ${order.shippingAddress.city}`, scheduledTime: addHours(created, stepOffsets[5]), done: now >= addHours(created, stepOffsets[5]) },
-      {
-        label: `Delivered – ${order.shippingAddress.address}, ${order.shippingAddress.city}`,
-        scheduledTime: addHours(created, stepOffsets[6]),
-        done: order.isDelivered || now >= addHours(created, stepOffsets[6]),
-        final: true,
-      },
-    ];
-
-    let lastReached = -1;
-    steps.forEach((s, i) => { if (s.done) lastReached = i; });
-
-    return steps.map((s, i) => ({
-      ...s,
-      time: formatTime(s.scheduledTime),
-      current: i === lastReached && !(s.final && s.done),
-    }));
   };
 
-  const getEstimatedDelivery = (createdAt, orderId) => {
-    const seed = getOrderSeed(orderId);
-    const deliveryDays = 1 + Math.floor(seededRandom(seed) * 3);
-    const d = new Date(createdAt);
-    d.setDate(d.getDate() + deliveryDays);
-    return d.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' });
-  };
-
-  const canCancel = (order) => {
-    if (order.isCancelled || order.isDelivered || userInfo?.isAdmin) return false;
-    const steps = getDeliverySteps(order);
-    const currentIndex = steps.findIndex((s) => s.current);
-    return currentIndex <= 0;
+  const handlePickup = async () => {
+    try {
+      await pickupOrder(orderId).unwrap();
+      toast.success('Order picked up! Automatic delivery tracking started.');
+      refetch();
+    } catch (err) {
+      toast.error(err?.data?.message || err.error);
+    }
   };
 
   return isLoading ? (
@@ -155,7 +229,7 @@ const OrderScreen = () => {
               Estimated Delivery Date
             </p>
             <strong style={{ color: 'var(--accent)', fontSize: '15px' }}>
-              {getEstimatedDelivery(order.createdAt, order._id)}
+              {getEstimatedDelivery(order)}
             </strong>
           </div>
         </div>
@@ -169,7 +243,6 @@ const OrderScreen = () => {
           </h4>
 
           <div style={{ position: 'relative', paddingLeft: '28px' }}>
-            {/* Vertical line */}
             <div style={{
               position: 'absolute',
               left: '6px', top: '8px', bottom: '8px',
@@ -239,13 +312,16 @@ const OrderScreen = () => {
                     )}
                   </div>
 
-                  {(step.done || step.current) && (
-                    <div style={{
-                      fontSize: '11px',
-                      color: 'var(--text-muted)',
-                      marginTop: '2px',
-                    }}>
+                  {(step.done || step.current) && step.time && (
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
                       🕐 {step.time}
+                    </div>
+                  )}
+
+                  {/* Show estimated time for future steps after pickup */}
+                  {!step.done && !step.current && step.scheduled && (
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', opacity: 0.6 }}>
+                      📅 Est. {step.scheduled}
                     </div>
                   )}
                 </div>
@@ -387,10 +463,65 @@ const OrderScreen = () => {
                 )}
               </ListGroup.Item>
 
-              {/* CANCEL BUTTON */}
-              {canCancel(order) && (
+              {/* ── ADMIN CONTROL BUTTONS ── */}
+              {userInfo?.isAdmin && !order.isCancelled && !order.isDelivered && (
                 <ListGroup.Item>
-                  <Button variant='danger' className='w-100' onClick={() => setShowCancelModal(true)}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <p style={{
+                      fontSize: '12px', fontWeight: '700',
+                      color: 'var(--accent)', margin: 0,
+                    }}>
+                      🛠 Admin Controls
+                    </p>
+
+                    {order.orderStatus === 'Order Created' && (
+                      <Button
+                        variant='warning'
+                        className='w-100'
+                        onClick={handlePrepare}
+                        disabled={loadingPrepare}
+                      >
+                        {loadingPrepare ? 'Processing...' : '📦 Prepare Order'}
+                      </Button>
+                    )}
+
+                    {order.orderStatus === 'Preparing' && (
+                      <Button
+                        variant='success'
+                        className='w-100'
+                        onClick={handlePickup}
+                        disabled={loadingPickup}
+                      >
+                        {loadingPickup ? 'Processing...' : '🛵 Mark as Picked Up'}
+                      </Button>
+                    )}
+
+                    {['Picked Up', 'In Transit', 'Out for Delivery'].includes(order.orderStatus) && (
+                      <div style={{
+                        backgroundColor: 'rgba(46,204,113,0.08)',
+                        border: '1px solid #2ecc71',
+                        borderRadius: '8px',
+                        padding: '8px 12px',
+                        fontSize: '12px',
+                        color: '#2ecc71',
+                        textAlign: 'center',
+                      }}>
+                        ✅ Auto-tracking active.<br />
+                        <strong>Status: {order.orderStatus}</strong>
+                      </div>
+                    )}
+                  </div>
+                </ListGroup.Item>
+              )}
+
+              {/* CANCEL BUTTON (user only) */}
+              {canCancel(order, userInfo) && (
+                <ListGroup.Item>
+                  <Button
+                    variant='danger'
+                    className='w-100'
+                    onClick={() => setShowCancelModal(true)}
+                  >
                     Cancel Order
                   </Button>
                   <small style={{
@@ -403,7 +534,8 @@ const OrderScreen = () => {
               )}
 
               {/* IN TRANSIT NOTICE */}
-              {!order.isCancelled && !order.isDelivered && !canCancel(order) && !userInfo?.isAdmin && (
+              {!order.isCancelled && !order.isDelivered &&
+                !canCancel(order, userInfo) && !userInfo?.isAdmin && (
                 <ListGroup.Item>
                   <div style={{
                     backgroundColor: 'rgba(212,175,55,0.08)',

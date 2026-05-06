@@ -65,6 +65,21 @@ export const orderApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Orders'],
     }),
+    // ── NEW ──
+    prepareOrder: builder.mutation({
+      query: (orderId) => ({
+        url: `${ORDERS_URL}/${orderId}/prepare`,
+        method: 'PUT',
+      }),
+      invalidatesTags: ['Orders'],
+    }),
+    pickupOrder: builder.mutation({
+      query: (orderId) => ({
+        url: `${ORDERS_URL}/${orderId}/pickup`,
+        method: 'PUT',
+      }),
+      invalidatesTags: ['Orders'],
+    }),
   }),
 });
 
@@ -78,4 +93,6 @@ export const {
   useDeliverOrderMutation,
   useCancelOrderMutation,
   useDeleteOrderMutation,
+  usePrepareOrderMutation,
+  usePickupOrderMutation,
 } = orderApiSlice;

@@ -6,6 +6,8 @@ import {
   getOrderById,
   updateOrderToPaid,
   updateOrderToDelivered,
+  prepareOrder,
+  pickupOrder,
   cancelOrder,
   getOrders,
   deleteOrder,
@@ -18,5 +20,8 @@ router.route('/:id').get(protect, getOrderById).delete(protect, admin, deleteOrd
 router.route('/:id/pay').put(protect, updateOrderToPaid);
 router.route('/:id/deliver').put(protect, admin, updateOrderToDelivered);
 router.route('/:id/cancel').put(protect, cancelOrder);
+// ── NEW routes ──
+router.route('/:id/prepare').put(protect, admin, prepareOrder);
+router.route('/:id/pickup').put(protect, admin, pickupOrder);
 
 export default router;

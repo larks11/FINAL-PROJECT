@@ -83,6 +83,33 @@ const orderSchema = mongoose.Schema(
       type: String,
       default: '',
     },
+
+    // ── NEW FIELDS ──────────────────────────────────────────────
+    orderStatus: {
+      type: String,
+      enum: [
+        'Order Created',
+        'Preparing',
+        'Picked Up',
+        'In Transit',
+        'Out for Delivery',
+        'Delivered',
+        'Cancelled',
+      ],
+      default: 'Order Created',
+    },
+    preparedAt: { type: Date },
+    pickedUpAt: { type: Date },
+    inTransitAt: { type: Date },
+    outForDeliveryAt: { type: Date },
+    statusHistory: [
+      {
+        status: { type: String },
+        timestamp: { type: Date, default: Date.now },
+        note: { type: String, default: '' },
+      },
+    ],
+    // ────────────────────────────────────────────────────────────
   },
   {
     timestamps: true,

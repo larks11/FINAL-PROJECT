@@ -9,6 +9,7 @@ import userRoutes from './routes/userRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
+import { advanceOrderStatuses } from './controllers/orderController.js';
 
 const port = process.env.PORT || 5000;
 
@@ -51,3 +52,13 @@ app.use(errorHandler);
 app.listen(port, () =>
   console.log(`Server running in ${process.env.NODE_ENV} mode on port ${port}`)
 );
+
+// ── Auto-advance order statuses every 5 minutes ──
+setInterval(async () => {
+  try {
+    await advanceOrderStatuses();
+    console.log('✅ Order statuses auto-advanced');
+  } catch (err) {
+    console.error('❌ Auto-advance orders error:', err.message);
+  }
+}, 5 * 60 * 1000);

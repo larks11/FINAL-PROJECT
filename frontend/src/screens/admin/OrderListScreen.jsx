@@ -6,6 +6,8 @@ import Loader from '../../components/Loader';
 import {
   useGetOrdersQuery,
   useDeleteOrderMutation,
+  usePrepareOrderMutation,
+  usePickupOrderMutation,
 } from '../../slices/ordersApiSlice';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -13,7 +15,10 @@ import { toast } from 'react-toastify';
 const OrderListScreen = () => {
   const { data: orders, isLoading, error, refetch } = useGetOrdersQuery();
   const [deleteOrder, { isLoading: loadingDelete }] = useDeleteOrderMutation();
+  const [prepareOrder, ] = usePrepareOrderMutation();
+  const [pickupOrder, ]   = usePickupOrderMutation();
   const [searchTerm, setSearchTerm] = useState('');
+  const [actionLoadingId, setActionLoadingId] = useState(null);
 
   const deleteHandler = async (id) => {
     if (window.confirm('Are you sure you want to delete this order?')) {
@@ -27,11 +32,49 @@ const OrderListScreen = () => {
     }
   };
 
+  const handlePrepare = async (id) => {
+    setActionLoadingId(id);
+    try {
+      await prepareOrder(id).unwrap();
+      toast.success('Order is now being prepared!');
+      refetch();
+    } catch (err) {
+      toast.error(err?.data?.message || err.error);
+    }
+    setActionLoadingId(null);
+  };
+
+  const handlePickup = async (id) => {
+    setActionLoadingId(id);
+    try {
+      await pickupOrder(id).unwrap();
+      toast.success('Picked up! Auto-tracking started.');
+      refetch();
+    } catch (err) {
+      toast.error(err?.data?.message || err.error);
+    }
+    setActionLoadingId(null);
+  };
+
   const getStatusBadge = (order) => {
-    if (order.isCancelled) return <Badge bg='danger'>Cancelled</Badge>;
-    if (order.isDelivered) return <Badge bg='success'>Delivered</Badge>;
-    if (order.isPaid) return <Badge bg='info'>Processing</Badge>;
-    return <Badge bg='warning'>Pending</Badge>;
+    const statusMap = {
+      'Cancelled':        { bg: 'danger',    label: 'Cancelled' },
+      'Delivered':        { bg: 'success',   label: 'Delivered' },
+      'Out for Delivery': { bg: 'primary',   label: 'Out for Delivery' },
+      'In Transit':       { bg: 'info',      label: 'In Transit' },
+      'Picked Up':        { bg: 'secondary', label: 'Picked Up' },
+      'Preparing':        { bg: 'warning',   label: 'Preparing' },
+      'Order Created':    { bg: 'dark',      label: 'Order Created' },
+    };
+
+    const key = order.isCancelled
+      ? 'Cancelled'
+      : order.isDelivered
+      ? 'Delivered'
+      : order.orderStatus || 'Order Created';
+
+    const cfg = statusMap[key] || { bg: 'secondary', label: key };
+    return <Badge bg={cfg.bg}>{cfg.label}</Badge>;
   };
 
   const filteredOrders = orders?.filter((order) =>
@@ -86,36 +129,63 @@ const OrderListScreen = () => {
               <th>DATE</th>
               <th>TOTAL</th>
               <th>STATUS</th>
-              <th></th>
+              <th>ACTIONS</th>
             </tr>
           </thead>
           <tbody>
             {filteredOrders.length > 0 ? (
               filteredOrders.map((order) => (
-                <tr key={order._id}
-                  style={{ opacity: order.isCancelled ? 0.7 : 1 }}
-                >
+                <tr key={order._id} style={{ opacity: order.isCancelled ? 0.7 : 1 }}>
                   <td style={{ fontSize: '12px' }}>{order._id}</td>
                   <td>{order.user && order.user.name}</td>
                   <td>{order.createdAt.substring(0, 10)}</td>
                   <td>₱{Number(order.totalPrice).toLocaleString('en-PH')}</td>
                   <td>{getStatusBadge(order)}</td>
-                  <td style={{ display: 'flex', gap: '5px' }}>
-                    <Button
-                      as={Link}
-                      to={`/order/${order._id}`}
-                      variant='light'
-                      className='btn-sm'
-                    >
-                      Details
-                    </Button>
-                    <Button
-                      variant='danger'
-                      className='btn-sm'
-                      onClick={() => deleteHandler(order._id)}
-                    >
-                      <FaTrash style={{ color: 'white' }} />
-                    </Button>
+                  <td>
+                    <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                      <Button
+                        as={Link}
+                        to={`/order/${order._id}`}
+                        variant='light'
+                        className='btn-sm'
+                      >
+                        Details
+                      </Button>
+
+                      {/* Prepare button */}
+                      {!order.isCancelled && !order.isDelivered &&
+                        order.orderStatus === 'Order Created' && (
+                        <Button
+                          variant='warning'
+                          className='btn-sm'
+                          disabled={actionLoadingId === order._id}
+                          onClick={() => handlePrepare(order._id)}
+                        >
+                          {actionLoadingId === order._id ? '...' : '📦 Prepare'}
+                        </Button>
+                      )}
+
+                      {/* Pickup button */}
+                      {!order.isCancelled && !order.isDelivered &&
+                        order.orderStatus === 'Preparing' && (
+                        <Button
+                          variant='success'
+                          className='btn-sm'
+                          disabled={actionLoadingId === order._id}
+                          onClick={() => handlePickup(order._id)}
+                        >
+                          {actionLoadingId === order._id ? '...' : '🛵 Pickup'}
+                        </Button>
+                      )}
+
+                      <Button
+                        variant='danger'
+                        className='btn-sm'
+                        onClick={() => deleteHandler(order._id)}
+                      >
+                        <FaTrash style={{ color: 'white' }} />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))
