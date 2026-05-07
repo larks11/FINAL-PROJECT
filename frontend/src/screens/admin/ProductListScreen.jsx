@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Table, Button, Row, Col, Modal, Form, InputGroup, Badge } from 'react-bootstrap';
+import { Table, Button, Row, Col, Modal, Form, InputGroup, Badge, Card } from 'react-bootstrap';
 import { FaEdit, FaPlus, FaSearch, FaArchive, FaBoxOpen } from 'react-icons/fa';
 import { Link, useParams } from 'react-router-dom';
 import Message from '../../components/Message';
@@ -34,11 +34,16 @@ const ProductListScreen = () => {
   const [category, setCategory] = useState('');
   const [countInStock, setCountInStock] = useState('');
   const [description, setDescription] = useState('');
+  // ✅ Default color name field
+  const [defaultColorName, setDefaultColorName] = useState('');
+  const [colorVariants, setColorVariants] = useState([]);
 
   const resetForm = () => {
     setName(''); setPrice(''); setImage('');
     setBrand(''); setCategory('');
     setCountInStock(''); setDescription('');
+    setDefaultColorName('');
+    setColorVariants([]);
   };
 
   const uploadFileHandler = async (e) => {
@@ -53,6 +58,30 @@ const ProductListScreen = () => {
     }
   };
 
+  const uploadColorImageHandler = async (e, index) => {
+    const formData = new FormData();
+    formData.append('image', e.target.files[0]);
+    try {
+      const res = await uploadProductImage(formData).unwrap();
+      updateColorVariant(index, 'image', res.image);
+      toast.success('Color image uploaded!');
+    } catch (err) {
+      toast.error(err?.data?.message || err.error);
+    }
+  };
+
+  const addColorVariant = () => {
+    setColorVariants([...colorVariants, { colorName: '', colorHex: '#000000', image: '' }]);
+  };
+
+  const removeColorVariant = (index) => {
+    setColorVariants(colorVariants.filter((_, i) => i !== index));
+  };
+
+  const updateColorVariant = (index, field, value) => {
+    setColorVariants(colorVariants.map((v, i) => i === index ? { ...v, [field]: value } : v));
+  };
+
   const createProductHandler = async () => {
     if (!name || !price || !image || !brand || !category || !countInStock || !description) {
       toast.error('Please fill up all fields');
@@ -63,11 +92,15 @@ const ProductListScreen = () => {
       await updateProduct({
         productId: created._id,
         name, price: Number(price), image, brand,
-        category, countInStock: Number(countInStock), description,
+        category, countInStock: Number(countInStock),
+        description,
+        defaultColorName: defaultColorName || 'Default',
+        colorVariants,
       }).unwrap();
       toast.success('Product created successfully!');
       setShowModal(false);
       resetForm();
+      refetch();
     } catch (err) {
       toast.error(err?.data?.message || err.error);
     }
@@ -118,7 +151,6 @@ const ProductListScreen = () => {
         </Col>
       </Row>
 
-      {/* TOGGLE ARCHIVED */}
       <Row className='mb-3'>
         <Col>
           <Button
@@ -140,7 +172,6 @@ const ProductListScreen = () => {
         </Col>
       </Row>
 
-      {/* SEARCH */}
       <Row className='mb-3'>
         <Col md={6}>
           <InputGroup>
@@ -252,7 +283,7 @@ const ProductListScreen = () => {
         <Modal.Header closeButton>
           <Modal.Title><FaPlus /> Create New Product</Modal.Title>
         </Modal.Header>
-        <Modal.Body>
+        <Modal.Body style={{ maxHeight: '75vh', overflowY: 'auto' }}>
           <Form>
             <Row>
               <Col md={6}>
@@ -268,15 +299,17 @@ const ProductListScreen = () => {
                 </Form.Group>
               </Col>
             </Row>
+
             <Form.Group className='mb-3'>
               <Form.Label>Image</Form.Label>
               <Form.Control type='text' placeholder='Image URL' value={image} onChange={(e) => setImage(e.target.value)} className='mb-2' />
               <Form.Control type='file' onChange={uploadFileHandler} />
               {loadingUpload && <Loader />}
               {image && (
-                <img src={image} alt='preview' style={{ marginTop: '10px', height: '100px', objectFit: 'contain', border: '1px solid #eee', borderRadius: '8px', padding: '4px' }} />
+                <img src={image} alt='preview' style={{ marginTop: '10px', height: '100px', objectFit: 'contain', border: '1px solid var(--border)', borderRadius: '8px', padding: '4px' }} />
               )}
             </Form.Group>
+
             <Row>
               <Col md={6}>
                 <Form.Group className='mb-3'>
@@ -291,14 +324,127 @@ const ProductListScreen = () => {
                 </Form.Group>
               </Col>
             </Row>
+
             <Form.Group className='mb-3'>
               <Form.Label>Count In Stock</Form.Label>
               <Form.Control type='number' placeholder='Enter stock quantity' value={countInStock} onChange={(e) => setCountInStock(e.target.value)} />
             </Form.Group>
+
             <Form.Group className='mb-3'>
               <Form.Label>Description</Form.Label>
-              <Form.Control as='textarea' rows={3} placeholder='Enter product description' value={description} onChange={(e) => setDescription(e.target.value)} />
+              <Form.Control
+                as='textarea' rows={4}
+                placeholder={'Enter product description...\n\nTip: Press Enter para ma-separate ang bawat spec line.'}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                style={{ fontFamily: 'monospace', fontSize: '13px' }}
+              />
+              <Form.Text style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
+                💡 Pwede mag-Enter para mag-line break. Example: "Display: 6.5 inch\nRAM: 8GB\nStorage: 256GB"
+              </Form.Text>
             </Form.Group>
+
+            {/* ✅ COLOR VARIANTS SECTION */}
+            <div style={{
+              border: '1px solid var(--accent-dark)',
+              borderRadius: '10px',
+              padding: '16px',
+              backgroundColor: 'rgba(212,175,55,0.04)',
+            }}>
+              <h6 style={{ color: 'var(--accent)', marginBottom: '14px' }}>
+                🎨 Color Variants <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>(optional)</span>
+              </h6>
+
+              {/* ✅ DEFAULT COLOR NAME FIELD */}
+              <Form.Group className='mb-3'>
+                <Form.Label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-main)' }}>
+                  Main / Default Color Name
+                </Form.Label>
+                <Form.Control
+                  type='text'
+                  size='sm'
+                  placeholder='e.g. Titanium Grey, Midnight Black, Starlight...'
+                  value={defaultColorName}
+                  onChange={(e) => setDefaultColorName(e.target.value)}
+                />
+                <Form.Text style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
+                  💡 Kini ang pangalan sa main image / default na makita sa product.
+                </Form.Text>
+              </Form.Group>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
+                <Button
+                  type='button' size='sm'
+                  onClick={addColorVariant}
+                  style={{ backgroundColor: 'var(--accent)', border: 'none', color: '#000', fontWeight: '600' }}
+                >
+                  + Add Color Variant
+                </Button>
+              </div>
+
+              {colorVariants.length === 0 && (
+                <p style={{ color: 'var(--text-muted)', fontSize: '12px', textAlign: 'center', margin: 0 }}>
+                  Walay additional color variants.
+                </p>
+              )}
+
+              {colorVariants.map((variant, index) => (
+                <Card key={index} style={{ marginBottom: '10px', backgroundColor: 'var(--bg-soft)', border: '1px solid var(--border)' }}>
+                  <Card.Body className='py-2'>
+                    <Row className='align-items-center g-2'>
+                      <Col md={1}>
+                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: variant.colorHex, border: '2px solid var(--border)' }} />
+                      </Col>
+                      <Col md={3}>
+                        <Form.Control
+                          type='text' size='sm'
+                          placeholder='Color name'
+                          value={variant.colorName}
+                          onChange={(e) => updateColorVariant(index, 'colorName', e.target.value)}
+                        />
+                      </Col>
+                      <Col md={2}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <input
+                            type='color'
+                            value={variant.colorHex}
+                            onChange={(e) => updateColorVariant(index, 'colorHex', e.target.value)}
+                            style={{ width: '32px', height: '32px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                          />
+                          <Form.Control
+                            type='text' size='sm'
+                            value={variant.colorHex}
+                            onChange={(e) => updateColorVariant(index, 'colorHex', e.target.value)}
+                            style={{ width: '80px' }}
+                          />
+                        </div>
+                      </Col>
+                      <Col md={4}>
+                        <Form.Control
+                          type='text' size='sm'
+                          placeholder='Image URL'
+                          value={variant.image}
+                          onChange={(e) => updateColorVariant(index, 'image', e.target.value)}
+                          className='mb-1'
+                        />
+                        <Form.Control
+                          type='file' size='sm'
+                          onChange={(e) => uploadColorImageHandler(e, index)}
+                        />
+                      </Col>
+                      <Col md={1}>
+                        {variant.image && (
+                          <img src={variant.image} alt='preview' style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '4px', border: '1px solid var(--border)' }} />
+                        )}
+                      </Col>
+                      <Col md={1}>
+                        <Button type='button' variant='danger' size='sm' onClick={() => removeColorVariant(index)}>✕</Button>
+                      </Col>
+                    </Row>
+                  </Card.Body>
+                </Card>
+              ))}
+            </div>
           </Form>
         </Modal.Body>
         <Modal.Footer>

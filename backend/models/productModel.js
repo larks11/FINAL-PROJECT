@@ -31,6 +31,8 @@ const productSchema = mongoose.Schema(
     numReviews: { type: Number, required: true, default: 0 },
     price: { type: Number, required: true, default: 0 },
     countInStock: { type: Number, required: true, default: 0 },
+    // ✅ DEFAULT COLOR NAME - admin mismo mag-input
+    defaultColorName: { type: String, default: 'Default' },
     colorVariants: [
       {
         colorName: { type: String, required: true },
@@ -38,7 +40,6 @@ const productSchema = mongoose.Schema(
         image: { type: String, required: true },
       },
     ],
-    // ✅ BAG-ONG FIELD
     isArchived: { type: Boolean, default: false },
   },
   { timestamps: true }

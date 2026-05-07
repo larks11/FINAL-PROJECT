@@ -11,7 +11,6 @@ const getProducts = asyncHandler(async (req, res) => {
     ? { name: { $regex: req.query.keyword, $options: 'i' } }
     : {};
 
-  // ✅ I-exclude ang archived products sa user view
   const filter = { ...keyword, isArchived: { $ne: true } };
 
   const count = await Product.countDocuments(filter);
@@ -22,7 +21,6 @@ const getProducts = asyncHandler(async (req, res) => {
   res.json({ products, page, pages: Math.ceil(count / pageSize) });
 });
 
-// ✅ BAG-ONG: Admin makakita sa tanan products including archived
 const getAdminProducts = asyncHandler(async (req, res) => {
   const pageSize = Number(process.env.PAGINATION_LIMIT) || 10;
   const page = Number(req.query.pageNumber) || 1;
@@ -54,6 +52,7 @@ const createProduct = asyncHandler(async (req, res) => {
     countInStock: 0,
     numReviews: 0,
     description: 'Sample description',
+    defaultColorName: '',
     colorVariants: [],
     isArchived: false,
   });
@@ -65,14 +64,12 @@ const createProduct = asyncHandler(async (req, res) => {
 const updateProduct = asyncHandler(async (req, res) => {
   const {
     name, price, description, image,
-    brand, category, countInStock, colorVariants,
+    brand, category, countInStock, colorVariants, defaultColorName,
   } = req.body;
 
   const product = await Product.findById(req.params.id);
 
   if (product) {
-    const wasOutOfStock = product.countInStock === 0;
-
     product.name = name;
     product.price = price;
     product.description = description;
@@ -81,12 +78,12 @@ const updateProduct = asyncHandler(async (req, res) => {
     product.category = category;
     product.countInStock = countInStock;
     product.colorVariants = colorVariants || [];
+    // ✅ I-save ang default color name nga gi-input sa admin
+    product.defaultColorName = defaultColorName || 'Default';
 
-    // ✅ Auto-archive kung sold out, auto-unarchive kung restocked
     if (Number(countInStock) === 0) {
       product.isArchived = true;
 
-      // Notify admin via Request
       await Request.create({
         user: req.user._id,
         productName: name,
@@ -96,7 +93,6 @@ const updateProduct = asyncHandler(async (req, res) => {
         isRead: false,
       });
     } else {
-      // Kung na-restock, i-unarchive
       product.isArchived = false;
     }
 
@@ -108,7 +104,6 @@ const updateProduct = asyncHandler(async (req, res) => {
   }
 });
 
-// ✅ BAG-ONG: Manual archive/unarchive toggle sa admin
 const toggleArchiveProduct = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id);
 
@@ -199,7 +194,6 @@ const getTopProducts = asyncHandler(async (req, res) => {
 });
 
 const getProductsByCategory = asyncHandler(async (req, res) => {
-  // ✅ I-exclude archived sa category view
   const products = await Product.find({
     category: req.params.category,
     isArchived: { $ne: true },
