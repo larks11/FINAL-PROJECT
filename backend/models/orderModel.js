@@ -45,27 +45,31 @@ const orderSchema = mongoose.Schema(
     cancelledAt:   { type: Date },
     cancelReason:  { type: String, default: '' },
 
-    // ✅ DELIVERY STATUS (gi-merge ang duha ka version)
-    deliveryStatus: {
+    // ✅ ORDER STATUS (gi-add ang missing fields!)
+    orderStatus: {
       type: String,
       enum: [
-        'order_created',
-        'prepared',
-        'picked_up',
-        'in_transit',
-        'arrived',
-        'out_for_delivery',
-        'delivered',
+        'Order Created',
+        'Preparing',
+        'Picked Up',
+        'In Transit',
+        'Out for Delivery',
+        'Delivered',
+        'Cancelled',
       ],
-      default: 'order_created',
+      default: 'Order Created',
     },
-    deliveryStatusHistory: [
+    statusHistory: [
       {
         status:    { type: String },
         timestamp: { type: Date, default: Date.now },
         note:      { type: String, default: '' },
       },
     ],
+    preparedAt:        { type: Date },
+    pickedUpAt:        { type: Date },
+    inTransitAt:       { type: Date },
+    outForDeliveryAt:  { type: Date },
     estimatedDeliveryDate: { type: Date },
   },
   { timestamps: true }
