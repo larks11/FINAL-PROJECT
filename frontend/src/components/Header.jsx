@@ -13,7 +13,6 @@ import {
   useGetMyRequestsQuery,
 } from '../slices/productsApiSlice';
 
-// ✅ 3 white combos gidugang
 const THEMES = [
   { id: 'black-gold',    label: '🖤 Black & Gold',         dot: '#d4af37', bg: '#0a0a0a' },
   { id: 'white-gold',    label: '🤍 White & Gold',         dot: '#b8860b', bg: '#f5f0e8' },
@@ -169,6 +168,7 @@ const Header = () => {
             <Nav className='ms-auto align-items-center' style={{ gap: '6px' }}>
               <SearchBox />
 
+              {/* ── REGULAR USER ── */}
               {userInfo && !userInfo.isAdmin && (
                 <Nav.Link as={Link} to='/cart'>
                   <FaShoppingCart /> Cart
@@ -222,8 +222,10 @@ const Header = () => {
                 </>
               )}
 
+              {/* ── ADMIN ── */}
               {userInfo && userInfo.isAdmin && (
                 <>
+                  {/* Bell */}
                   <Nav.Link as={Link} to='/admin/requests' style={{ position: 'relative' }}>
                     <FaBell style={{ fontSize: '18px', color: unreadCount > 0 ? '#ff6b35' : 'var(--text-muted)' }} />
                     {unreadCount > 0 && (
@@ -233,13 +235,19 @@ const Header = () => {
                     )}
                   </Nav.Link>
 
+                  {/* Admin User dropdown */}
                   <NavDropdown title={userInfo.name} id='username'>
                     <NavDropdown.Item as={Link} to='/profile'>Profile</NavDropdown.Item>
                     <NavDropdown.Divider />
                     <NavDropdown.Item onClick={logoutHandler}>Logout</NavDropdown.Item>
                   </NavDropdown>
 
+                  {/* Edit dropdown */}
                   <NavDropdown title='Edit' id='adminmenu'>
+                    <NavDropdown.Item as={Link} to='/admin/dashboard'>
+                      📊 Dashboard
+                    </NavDropdown.Item>
+                    <NavDropdown.Divider />
                     <NavDropdown.Item as={Link} to='/admin/productlist'>Products</NavDropdown.Item>
                     <NavDropdown.Item as={Link} to='/admin/orderlist'>Orders</NavDropdown.Item>
                     <NavDropdown.Item as={Link} to='/admin/userlist'>Users</NavDropdown.Item>
@@ -250,7 +258,20 @@ const Header = () => {
                         <Badge pill bg='danger' style={{ marginLeft: '8px' }}>{unreadCount}</Badge>
                       )}
                     </NavDropdown.Item>
+                    <NavDropdown.Item as={Link} to='/admin/settings'>
+                      ⚙️ Settings
+                    </NavDropdown.Item>
                   </NavDropdown>
+
+                  {/* ✅ FIXED — Nav.Link na ni, dili na NavDropdown.Item */}
+                  <Nav.Link as={Link} to='/admin/inventory'>
+                    📦 Inventory
+                  </Nav.Link>
+
+                  {/* ✅ FIXED — Nav.Link na ni, dili na NavDropdown.Item */}
+                  <Nav.Link as={Link} to='/admin/accounting'>
+                    💰 Accounting
+                  </Nav.Link>
 
                   <ThemeDropdown currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} />
                 </>

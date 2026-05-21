@@ -6,7 +6,7 @@ import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import App from './App';
 import reportWebVitals from './reportWebVitals';
-import AdminRequestScreen from './screens/AdminRequestScreen';
+import AdminRequestScreen from './screens/admin/AdminRequestScreen';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import UserRequestScreen from './screens/UserRequestScreen';
 import MyOrdersScreen from './screens/MyOrdersScreen';
@@ -34,9 +34,13 @@ import ProductListScreen from './screens/admin/ProductListScreen';
 import ProductEditScreen from './screens/admin/ProductEditScreen';
 import UserListScreen from './screens/admin/UserListScreen';
 import UserEditScreen from './screens/admin/UserEditScreen';
+import AdminDashboard from './screens/admin/AdminDashboard';
+import AdminSettingsScreen from './screens/admin/AdminSettingsScreen';
+import AccountingScreen from './screens/admin/AccountingScreen';
 import store from './store';
 import { Provider } from 'react-redux';
 import { PayPalScriptProvider } from '@paypal/react-paypal-js';
+import InventoryScreen from './screens/admin/InventoryScreen';
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -63,6 +67,7 @@ const router = createBrowserRouter(
 
       {/* ===== ADMIN ROUTES ===== */}
       <Route path='' element={<AdminRoute />}>
+        <Route path='/admin/dashboard' element={<AdminDashboard />} />
         <Route path='/admin/orderlist' element={<OrderListScreen />} />
         <Route path='/admin/productlist' element={<ProductListScreen />} />
         <Route path='/admin/productlist/:pageNumber' element={<ProductListScreen />} />
@@ -70,6 +75,9 @@ const router = createBrowserRouter(
         <Route path='/admin/product/:id/edit' element={<ProductEditScreen />} />
         <Route path='/admin/user/:id/edit' element={<UserEditScreen />} />
         <Route path='/admin/requests' element={<AdminRequestScreen />} />
+        <Route path='/admin/settings' element={<AdminSettingsScreen />} />
+        <Route path='/admin/inventory' element={<InventoryScreen />} />
+        <Route path='/admin/accounting' element={<AccountingScreen />} />
       </Route>
     </Route>
   )

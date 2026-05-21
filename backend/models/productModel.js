@@ -31,7 +31,6 @@ const productSchema = mongoose.Schema(
     numReviews: { type: Number, required: true, default: 0 },
     price: { type: Number, required: true, default: 0 },
     countInStock: { type: Number, required: true, default: 0 },
-    // ✅ DEFAULT COLOR NAME - admin mismo mag-input
     defaultColorName: { type: String, default: 'Default' },
     colorVariants: [
       {
@@ -41,6 +40,12 @@ const productSchema = mongoose.Schema(
       },
     ],
     isArchived: { type: Boolean, default: false },
+
+    // ── INVENTORY FIELDS (bag-o) ─────────────────────────────
+    supplier: { type: String, default: '' },
+    wholesalePrice: { type: Number, default: 0 },
+    lowStockThreshold: { type: Number, default: 5 },
+    sku: { type: String, default: '' },
   },
   { timestamps: true }
 );

@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { Table, Badge, Button, Modal, Form } from 'react-bootstrap';
-import Loader from '../components/Loader';
-import Message from '../components/Message';
+import Loader from '../../components/Loader';
+import Message from '../../components/Message';
 import { FaTrash, FaPaperPlane } from 'react-icons/fa';
 import {
   useGetRequestsQuery,
   useMarkRequestReadMutation,
   useReplyToRequestMutation,
-} from '../slices/productsApiSlice';
+} from '../../slices/productsApiSlice';
 import { useSelector } from 'react-redux';
 
 const AdminRequestScreen = () => {

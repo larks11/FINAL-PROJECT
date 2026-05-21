@@ -12,6 +12,24 @@ import { clearCartItems } from '../slices/cartSlice';
 const formatPeso = (amount) =>
   new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(amount);
 
+const getShippingFee = (city = '') => {
+  const location = city.toLowerCase();
+  const visayas = ['cebu','mandaue','lapu-lapu','lapulapu','talisay','danao','toledo','bogo','iloilo','bacolod','dumaguete','tagbilaran','boracay','roxas','ormoc','tacloban','palo','tanauan','tolosa','dulag','abuyog','baybay','maasin','burauen','carigara','naval','catbalogan','calbayog','leyte','samar','bohol','negros','panay','visayas'];
+  const mindanao = ['davao','cagayan','cdo','cagayan de oro','zamboanga','general santos','gensan','cotabato','butuan','iligan','surigao','pagadian','koronadal','tacurong','kidapawan','midsayap','mindanao'];
+  if (visayas.some((k) => location.includes(k))) return 80;
+  if (mindanao.some((k) => location.includes(k))) return 150;
+  return 200;
+};
+
+const getRegionLabel = (city = '') => {
+  const location = city.toLowerCase();
+  const visayas = ['cebu','mandaue','lapu-lapu','lapulapu','talisay','danao','toledo','bogo','iloilo','bacolod','dumaguete','tagbilaran','boracay','roxas','ormoc','tacloban','palo','tanauan','tolosa','dulag','abuyog','baybay','maasin','burauen','carigara','naval','catbalogan','calbayog','leyte','samar','bohol','negros','panay','visayas'];
+  const mindanao = ['davao','cagayan','cdo','cagayan de oro','zamboanga','general santos','gensan','cotabato','butuan','iligan','surigao','pagadian','koronadal','tacurong','kidapawan','midsayap','mindanao'];
+  if (visayas.some((k) => location.includes(k))) return 'Within Visayas';
+  if (mindanao.some((k) => location.includes(k))) return 'Visayas → Mindanao';
+  return 'Visayas → Luzon';
+};
+
 const PlaceOrderScreen = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -27,12 +45,11 @@ const PlaceOrderScreen = () => {
     }
   }, [cart.paymentMethod, cart.shippingAddress.address, navigate]);
 
-  // Total qty of all items
-  const totalQty = cart.cartItems.reduce((acc, item) => acc + item.qty, 0);
-
-  // Shipping fee = 1% of itemsPrice per qty
-  const shippingFee = Number((cart.itemsPrice * 0.01 * totalQty).toFixed(2));
-  const totalPrice  = Number((Number(cart.itemsPrice) + shippingFee).toFixed(2));
+  const totalQty    = cart.cartItems.reduce((acc, item) => acc + item.qty, 0);
+  const itemsPrice  = Number(cart.itemsPrice);
+  const shippingFee = getShippingFee(cart.shippingAddress.city);
+  const totalPrice  = Number((itemsPrice + shippingFee).toFixed(2));
+  const regionLabel = getRegionLabel(cart.shippingAddress.city);
 
   const placeOrderHandler = async () => {
     try {
@@ -40,10 +57,10 @@ const PlaceOrderScreen = () => {
         orderItems:      cart.cartItems,
         shippingAddress: cart.shippingAddress,
         paymentMethod:   cart.paymentMethod,
-        itemsPrice:      cart.itemsPrice,
+        itemsPrice,
         shippingPrice:   shippingFee,
         taxPrice:        0,
-        totalPrice:      totalPrice,
+        totalPrice,
       }).unwrap();
       dispatch(clearCartItems());
       navigate(`/order/${res._id}`);
@@ -60,7 +77,6 @@ const PlaceOrderScreen = () => {
         <Col md={8}>
           <ListGroup variant='flush'>
 
-            {/* SHIPPING */}
             <ListGroup.Item>
               <h2>📦 Shipping</h2>
               <p>
@@ -70,9 +86,11 @@ const PlaceOrderScreen = () => {
                 {cart.shippingAddress.postalCode},{' '}
                 {cart.shippingAddress.country}
               </p>
+              <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>
+                🗺️ Delivery route: <strong>{regionLabel}</strong>
+              </p>
             </ListGroup.Item>
 
-            {/* ORDER ITEMS */}
             <ListGroup.Item>
               <h2>🛒 Order Items</h2>
               {cart.cartItems.length === 0 ? (
@@ -101,7 +119,6 @@ const PlaceOrderScreen = () => {
           </ListGroup>
         </Col>
 
-        {/* ORDER SUMMARY */}
         <Col md={4}>
           <Card>
             <ListGroup variant='flush'>
@@ -109,7 +126,6 @@ const PlaceOrderScreen = () => {
                 <h2>Order Summary</h2>
               </ListGroup.Item>
 
-              {/* PAYMENT METHOD */}
               <ListGroup.Item style={{
                 backgroundColor: 'rgba(212,175,55,0.06)',
                 borderLeft: '3px solid var(--accent)',
@@ -122,15 +138,13 @@ const PlaceOrderScreen = () => {
                 </strong>
               </ListGroup.Item>
 
-              {/* ITEMS */}
               <ListGroup.Item>
                 <Row>
-                  <Col>Items ({totalQty} pcs)</Col>
-                  <Col>{formatPeso(cart.itemsPrice)}</Col>
+                  <Col>Item Cost ({totalQty} pcs)</Col>
+                  <Col>{formatPeso(itemsPrice)}</Col>
                 </Row>
               </ListGroup.Item>
 
-              {/* SHIPPING FEE 1% x qty */}
               <ListGroup.Item style={{
                 backgroundColor: 'rgba(212,175,55,0.08)',
                 border: '1px solid var(--accent-dark)',
@@ -140,7 +154,7 @@ const PlaceOrderScreen = () => {
                   <Col>
                     <strong>Shipping Fee 🚚</strong>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                      1% × {totalQty} item{totalQty > 1 ? 's' : ''}
+                      {regionLabel}
                     </div>
                   </Col>
                   <Col>
@@ -151,10 +165,9 @@ const PlaceOrderScreen = () => {
                 </Row>
               </ListGroup.Item>
 
-              {/* TOTAL */}
               <ListGroup.Item>
                 <Row>
-                  <Col><strong>Total</strong></Col>
+                  <Col><strong>Total Amount</strong></Col>
                   <Col>
                     <strong style={{ color: 'var(--accent)', fontSize: '16px' }}>
                       {formatPeso(totalPrice)}

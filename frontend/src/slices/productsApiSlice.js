@@ -1,8 +1,11 @@
 import { PRODUCTS_URL } from '../constants';
 import { apiSlice } from './apiSlice';
 
+const INVENTORY_URL = '/api/inventory';
+
 export const productsApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
+    // ── PRODUCTS ──────────────────────────────────────────────────────────
     getProducts: builder.query({
       query: ({ keyword, pageNumber }) => ({
         url: PRODUCTS_URL,
@@ -11,7 +14,6 @@ export const productsApiSlice = apiSlice.injectEndpoints({
       keepUnusedDataFor: 5,
       providesTags: ['Products'],
     }),
-    // ✅ BAG-ONG: Admin fetch — makita tanan including archived
     getAdminProducts: builder.query({
       query: ({ pageNumber } = {}) => ({
         url: `${PRODUCTS_URL}/admin/all`,
@@ -21,9 +23,7 @@ export const productsApiSlice = apiSlice.injectEndpoints({
       providesTags: ['Products'],
     }),
     getProductDetails: builder.query({
-      query: (productId) => ({
-        url: `${PRODUCTS_URL}/${productId}`,
-      }),
+      query: (productId) => ({ url: `${PRODUCTS_URL}/${productId}` }),
       keepUnusedDataFor: 5,
       providesTags: (result, error, id) => [{ type: 'Product', id }],
     }),
@@ -34,16 +34,11 @@ export const productsApiSlice = apiSlice.injectEndpoints({
       keepUnusedDataFor: 5,
     }),
     checkUserOrder: builder.query({
-      query: (productId) => ({
-        url: `${PRODUCTS_URL}/${productId}/check-order`,
-      }),
+      query: (productId) => ({ url: `${PRODUCTS_URL}/${productId}/check-order` }),
       keepUnusedDataFor: 5,
     }),
     createProduct: builder.mutation({
-      query: () => ({
-        url: `${PRODUCTS_URL}`,
-        method: 'POST',
-      }),
+      query: () => ({ url: PRODUCTS_URL, method: 'POST' }),
       invalidatesTags: ['Products'],
     }),
     updateProduct: builder.mutation({
@@ -58,11 +53,7 @@ export const productsApiSlice = apiSlice.injectEndpoints({
       ],
     }),
     uploadProductImage: builder.mutation({
-      query: (data) => ({
-        url: `/api/upload`,
-        method: 'POST',
-        body: data,
-      }),
+      query: (data) => ({ url: `/api/upload`, method: 'POST', body: data }),
     }),
     deleteProduct: builder.mutation({
       query: (productId) => ({
@@ -87,6 +78,15 @@ export const productsApiSlice = apiSlice.injectEndpoints({
       keepUnusedDataFor: 5,
       providesTags: ['Products'],
     }),
+    toggleArchiveProduct: builder.mutation({
+      query: (id) => ({
+        url: `${PRODUCTS_URL}/${id}/archive`,
+        method: 'PUT',
+      }),
+      invalidatesTags: ['Products'],
+    }),
+
+    // ── REQUESTS ──────────────────────────────────────────────────────────
     submitRequest: builder.mutation({
       query: (data) => ({
         url: `${PRODUCTS_URL}/request`,
@@ -140,19 +140,91 @@ export const productsApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['MyRequests'],
     }),
-    toggleArchiveProduct: builder.mutation({
+    deleteRequest: builder.mutation({
       query: (id) => ({
-        url: `${PRODUCTS_URL}/${id}/archive`,
+        url: `${PRODUCTS_URL}/requests/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Requests'],
+    }),
+    deleteAllRequests: builder.mutation({
+      query: () => ({
+        url: `${PRODUCTS_URL}/requests/all`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Requests'],
+    }),
+
+    // ── SETTINGS ──────────────────────────────────────────────────────────
+    getSettings: builder.query({
+      query: () => '/api/settings',
+      keepUnusedDataFor: 5,
+      providesTags: ['Settings'],
+    }),
+    updateSettings: builder.mutation({
+      query: (data) => ({
+        url: '/api/settings',
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['Settings'],
+    }),
+
+    // ── INVENTORY ─────────────────────────────────────────────────────────
+    getInventory: builder.query({
+      query: ({ keyword, category } = {}) => ({
+        url: INVENTORY_URL,
+        params: { keyword, category },
+      }),
+      keepUnusedDataFor: 5,
+      providesTags: ['Inventory'],
+    }),
+    getInventoryStats: builder.query({
+      query: () => `${INVENTORY_URL}/stats`,
+      keepUnusedDataFor: 5,
+      providesTags: ['Inventory'],
+    }),
+    getInventoryCategories: builder.query({
+      query: () => `${INVENTORY_URL}/categories`,
+      keepUnusedDataFor: 5,
+      providesTags: ['Inventory'],
+    }),
+    createInventoryItem: builder.mutation({
+      query: (data) => ({
+        url: INVENTORY_URL,
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['Inventory'],
+    }),
+    updateInventoryItem: builder.mutation({
+      query: ({ id, ...data }) => ({
+        url: `${INVENTORY_URL}/${id}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['Inventory'],
+    }),
+    deleteInventoryItem: builder.mutation({
+      query: (id) => ({
+        url: `${INVENTORY_URL}/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Inventory'],
+    }),
+    syncInventoryStock: builder.mutation({
+      query: (id) => ({
+        url: `${INVENTORY_URL}/${id}/sync`,
         method: 'PUT',
       }),
-      invalidatesTags: ['Products'],
+      invalidatesTags: ['Inventory', 'Products'],
     }),
   }),
 });
 
 export const {
   useGetProductsQuery,
-  useGetAdminProductsQuery, // ✅ BAG-ONG
+  useGetAdminProductsQuery,
   useGetProductDetailsQuery,
   useGetProductsByCategoryQuery,
   useCheckUserOrderQuery,
@@ -162,6 +234,7 @@ export const {
   useDeleteProductMutation,
   useCreateReviewMutation,
   useGetTopProductsQuery,
+  useToggleArchiveProductMutation,
   useSubmitRequestMutation,
   useGetRequestsQuery,
   useGetMyRequestsQuery,
@@ -170,5 +243,16 @@ export const {
   useMarkReplySeenMutation,
   useReplyToRequestMutation,
   useUserReplyToRequestMutation,
-  useToggleArchiveProductMutation,
+  useDeleteRequestMutation,
+  useDeleteAllRequestsMutation,
+  useGetSettingsQuery,
+  useUpdateSettingsMutation,
+  // Inventory
+  useGetInventoryQuery,
+  useGetInventoryStatsQuery,
+  useGetInventoryCategoriesQuery,
+  useCreateInventoryItemMutation,
+  useUpdateInventoryItemMutation,
+  useDeleteInventoryItemMutation,
+  useSyncInventoryStockMutation,
 } = productsApiSlice;

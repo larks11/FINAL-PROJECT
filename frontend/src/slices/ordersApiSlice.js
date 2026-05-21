@@ -65,7 +65,6 @@ export const orderApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Orders'],
     }),
-    // ── NEW ──
     prepareOrder: builder.mutation({
       query: (orderId) => ({
         url: `${ORDERS_URL}/${orderId}/prepare`,
@@ -79,6 +78,19 @@ export const orderApiSlice = apiSlice.injectEndpoints({
         method: 'PUT',
       }),
       invalidatesTags: ['Orders'],
+    }),
+    // ── REPORTS ──
+    getSalesReport: builder.query({
+      query: (period = 'monthly') => ({
+        url: `/api/reports/sales?period=${period}`,
+      }),
+      keepUnusedDataFor: 5,
+    }),
+    getTopProducts: builder.query({
+      query: () => ({
+        url: `/api/reports/top-products`,
+      }),
+      keepUnusedDataFor: 5,
     }),
   }),
 });
@@ -95,4 +107,6 @@ export const {
   useDeleteOrderMutation,
   usePrepareOrderMutation,
   usePickupOrderMutation,
+  useGetSalesReportQuery,
+  useGetTopProductsQuery,
 } = orderApiSlice;

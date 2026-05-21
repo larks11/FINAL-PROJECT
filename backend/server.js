@@ -10,6 +10,9 @@ import orderRoutes from './routes/orderRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 import { advanceOrderStatuses } from './controllers/orderController.js';
+import settingsRoutes from './routes/settingsRoutes.js';
+import inventoryRoutes from './routes/inventoryRoutes.js';
+import reportRoutes from './routes/reportRoutes.js';
 
 const port = process.env.PORT || 5000;
 
@@ -25,7 +28,9 @@ app.use('/api/products', productRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/upload', uploadRoutes);
-
+app.use('/api/settings', settingsRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/reports', reportRoutes);
 app.get('/api/config/paypal', (req, res) =>
   res.send({ clientId: process.env.PAYPAL_CLIENT_ID })
 );
