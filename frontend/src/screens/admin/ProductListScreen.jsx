@@ -23,20 +23,20 @@ const ProductListScreen = () => {
   const [uploadProductImage, { isLoading: loadingUpload }] = useUploadProductImageMutation();
   const [toggleArchive, { isLoading: loadingArchive }] = useToggleArchiveProductMutation();
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showArchived, setShowArchived] = useState(false);
+  const [searchTerm, setSearchTerm]         = useState('');
+  const [showArchived, setShowArchived]     = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('all'); // ✅ NEW
 
   const [showModal, setShowModal] = useState(false);
-  const [name, setName] = useState('');
-  const [price, setPrice] = useState('');
-  const [image, setImage] = useState('');
-  const [brand, setBrand] = useState('');
-  const [category, setCategory] = useState('');
+  const [name, setName]             = useState('');
+  const [price, setPrice]           = useState('');
+  const [image, setImage]           = useState('');
+  const [brand, setBrand]           = useState('');
+  const [category, setCategory]     = useState('');
   const [countInStock, setCountInStock] = useState('');
-  const [description, setDescription] = useState('');
-  // ✅ Default color name field
+  const [description, setDescription]   = useState('');
   const [defaultColorName, setDefaultColorName] = useState('');
-  const [colorVariants, setColorVariants] = useState([]);
+  const [colorVariants, setColorVariants]       = useState([]);
 
   const resetForm = () => {
     setName(''); setPrice(''); setImage('');
@@ -120,15 +120,20 @@ const ProductListScreen = () => {
   };
 
   const allProducts = data?.products || [];
+
+  // ✅ Get unique categories automatically from products
+  const categories = ['all', ...new Set(allProducts.map((p) => p.category).filter(Boolean).sort())];
+
   const filteredProducts = allProducts
     .filter((p) => showArchived ? p.isArchived : !p.isArchived)
+    .filter((p) => selectedCategory === 'all' || p.category === selectedCategory) // ✅ Category filter
     .filter((p) =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.brand.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-  const soldOutCount = allProducts.filter((p) => p.countInStock === 0).length;
+  const soldOutCount  = allProducts.filter((p) => p.countInStock === 0).length;
   const archivedCount = allProducts.filter((p) => p.isArchived).length;
 
   return (
@@ -172,6 +177,35 @@ const ProductListScreen = () => {
         </Col>
       </Row>
 
+      {/* ✅ CATEGORY FILTER BUTTONS — auto-populated from products */}
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+        {categories.map((cat) => {
+          const count = cat === 'all'
+            ? allProducts.filter((p) => !p.isArchived).length
+            : allProducts.filter((p) => p.category === cat && !p.isArchived).length;
+          return (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              style={{
+                backgroundColor: selectedCategory === cat ? 'var(--accent)' : 'var(--bg-soft)',
+                color: selectedCategory === cat ? 'var(--btn-text)' : 'var(--text-muted)',
+                border: `1px solid ${selectedCategory === cat ? 'var(--accent)' : 'var(--border)'}`,
+                borderRadius: '20px',
+                padding: '5px 14px',
+                fontSize: '12px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              {cat === 'all' ? 'All' : cat} ({count})
+            </button>
+          );
+        })}
+      </div>
+
+      {/* SEARCH */}
       <Row className='mb-3'>
         <Col md={6}>
           <InputGroup>
@@ -344,7 +378,7 @@ const ProductListScreen = () => {
               </Form.Text>
             </Form.Group>
 
-            {/* ✅ COLOR VARIANTS SECTION */}
+            {/* COLOR VARIANTS SECTION */}
             <div style={{
               border: '1px solid var(--accent-dark)',
               borderRadius: '10px',
@@ -355,14 +389,12 @@ const ProductListScreen = () => {
                 🎨 Color Variants <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>(optional)</span>
               </h6>
 
-              {/* ✅ DEFAULT COLOR NAME FIELD */}
               <Form.Group className='mb-3'>
                 <Form.Label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-main)' }}>
                   Main / Default Color Name
                 </Form.Label>
                 <Form.Control
-                  type='text'
-                  size='sm'
+                  type='text' size='sm'
                   placeholder='e.g. Titanium Grey, Midnight Black, Starlight...'
                   value={defaultColorName}
                   onChange={(e) => setDefaultColorName(e.target.value)}
@@ -427,10 +459,7 @@ const ProductListScreen = () => {
                           onChange={(e) => updateColorVariant(index, 'image', e.target.value)}
                           className='mb-1'
                         />
-                        <Form.Control
-                          type='file' size='sm'
-                          onChange={(e) => uploadColorImageHandler(e, index)}
-                        />
+                        <Form.Control type='file' size='sm' onChange={(e) => uploadColorImageHandler(e, index)} />
                       </Col>
                       <Col md={1}>
                         {variant.image && (

@@ -41,6 +41,8 @@ import store from './store';
 import { Provider } from 'react-redux';
 import { PayPalScriptProvider } from '@paypal/react-paypal-js';
 import InventoryScreen from './screens/admin/InventoryScreen';
+// ✅ NEW: Notifications Screen
+import NotificationsScreen from './screens/admin/NotificationsScreen';
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -78,6 +80,8 @@ const router = createBrowserRouter(
         <Route path='/admin/settings' element={<AdminSettingsScreen />} />
         <Route path='/admin/inventory' element={<InventoryScreen />} />
         <Route path='/admin/accounting' element={<AccountingScreen />} />
+        {/* ✅ NEW: Notifications Route */}
+        <Route path='/admin/notifications' element={<NotificationsScreen />} />
       </Route>
     </Route>
   )

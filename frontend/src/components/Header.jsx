@@ -36,7 +36,7 @@ const ThemeDropdown = ({ currentTheme, setCurrentTheme }) => {
   }, []);
 
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
+    <div ref__={ref} style={{ position: 'relative' }}>
       <button
         onClick={() => setOpen((p) => !p)}
         style={{
@@ -73,7 +73,6 @@ const ThemeDropdown = ({ currentTheme, setCurrentTheme }) => {
           }}>
             Select Theme
           </p>
-
           {THEMES.map((theme) => {
             const isActive = currentTheme === theme.id;
             return (
@@ -168,29 +167,7 @@ const Header = () => {
             <Nav className='ms-auto align-items-center' style={{ gap: '6px' }}>
               <SearchBox />
 
-              {/* ── REGULAR USER ── */}
-              {userInfo && !userInfo.isAdmin && (
-                <Nav.Link as={Link} to='/cart'>
-                  <FaShoppingCart /> Cart
-                  {cartItems.length > 0 && (
-                    <Badge pill bg='primary' style={{ marginLeft: '5px' }}>
-                      {cartItems.reduce((a, c) => a + c.qty, 0)}
-                    </Badge>
-                  )}
-                </Nav.Link>
-              )}
-
-              {userInfo && !userInfo.isAdmin && (
-                <Nav.Link as={Link} to='/my-requests' style={{ position: 'relative' }}>
-                  <FaBell style={{ fontSize: '18px', color: newRepliesCount > 0 ? '#ff6b35' : 'var(--text-muted)' }} />
-                  {newRepliesCount > 0 && (
-                    <Badge pill bg='danger' style={{ position: 'absolute', top: '2px', right: '0px', fontSize: '10px', minWidth: '16px' }}>
-                      {newRepliesCount}
-                    </Badge>
-                  )}
-                </Nav.Link>
-              )}
-
+              {/* ── NOT LOGGED IN ── */}
               {!userInfo && (
                 <>
                   <Nav.Link as={Link} to='/login'><FaUser /> Sign In</Nav.Link>
@@ -198,26 +175,44 @@ const Header = () => {
                 </>
               )}
 
+              {/* ── REGULAR USER ── */}
               {userInfo && !userInfo.isAdmin && (
                 <>
+                  <Nav.Link as={Link} to='/cart'>
+                    <FaShoppingCart /> Cart
+                    {cartItems.length > 0 && (
+                      <Badge pill bg='primary' style={{ marginLeft: '5px' }}>
+                        {cartItems.reduce((a, c) => a + c.qty, 0)}
+                      </Badge>
+                    )}
+                  </Nav.Link>
+
+                  {/* User Notifications Bell */}
+                  <Nav.Link as={Link} to='/my-requests' style={{ position: 'relative' }}>
+                    <FaBell style={{ fontSize: '18px', color: newRepliesCount > 0 ? '#ff6b35' : 'var(--text-muted)' }} />
+                    {newRepliesCount > 0 && (
+                      <Badge pill bg='danger' style={{ position: 'absolute', top: '2px', right: '0px', fontSize: '10px', minWidth: '16px' }}>
+                        {newRepliesCount}
+                      </Badge>
+                    )}
+                  </Nav.Link>
+
                   <NavDropdown title={userInfo.name} id='username'>
                     <NavDropdown.Item as={Link} to='/profile'>Profile</NavDropdown.Item>
                     <NavDropdown.Item as={Link} to='/myorders'>
-                      <FaBoxOpen style={{ marginRight: '6px' }} />
-                      My Purchase
+                      <FaBoxOpen style={{ marginRight: '6px' }} />My Purchase
                     </NavDropdown.Item>
                     <NavDropdown.Item as={Link} to='/my-requests'>
                       <FaEnvelope style={{ marginRight: '6px' }} />
                       My Requests
                       {newRepliesCount > 0 && (
-                        <Badge pill bg='success' style={{ marginLeft: '8px' }}>
-                          {newRepliesCount} new
-                        </Badge>
+                        <Badge pill bg='success' style={{ marginLeft: '8px' }}>{newRepliesCount} new</Badge>
                       )}
                     </NavDropdown.Item>
                     <NavDropdown.Divider />
                     <NavDropdown.Item onClick={logoutHandler}>Logout</NavDropdown.Item>
                   </NavDropdown>
+
                   <ThemeDropdown currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} />
                 </>
               )}
@@ -225,8 +220,8 @@ const Header = () => {
               {/* ── ADMIN ── */}
               {userInfo && userInfo.isAdmin && (
                 <>
-                  {/* Bell */}
-                  <Nav.Link as={Link} to='/admin/requests' style={{ position: 'relative' }}>
+                  {/* 🔔 Notifications Bell — LEFT of Admin User */}
+                  <Nav.Link as={Link} to='/admin/notifications' style={{ position: 'relative' }} title='Notifications'>
                     <FaBell style={{ fontSize: '18px', color: unreadCount > 0 ? '#ff6b35' : 'var(--text-muted)' }} />
                     {unreadCount > 0 && (
                       <Badge pill bg='danger' style={{ position: 'absolute', top: '2px', right: '0px', fontSize: '10px', minWidth: '16px' }}>
@@ -235,44 +230,41 @@ const Header = () => {
                     )}
                   </Nav.Link>
 
-                  {/* Admin User dropdown */}
-                  <NavDropdown title={userInfo.name} id='username'>
-                    <NavDropdown.Item as={Link} to='/profile'>Profile</NavDropdown.Item>
+                  {/* 👤 Admin User Dropdown — now contains everything */}
+                  <NavDropdown
+                    title={
+                      <span>
+                        <FaUser style={{ marginRight: '5px' }} />
+                        {userInfo.name}
+                      </span>
+                    }
+                    id='adminmenu'
+                  >
+                    <NavDropdown.Item as={Link} to='/profile'>👤 Profile</NavDropdown.Item>
                     <NavDropdown.Divider />
-                    <NavDropdown.Item onClick={logoutHandler}>Logout</NavDropdown.Item>
-                  </NavDropdown>
-
-                  {/* Edit dropdown */}
-                  <NavDropdown title='Edit' id='adminmenu'>
-                    <NavDropdown.Item as={Link} to='/admin/dashboard'>
-                      📊 Dashboard
-                    </NavDropdown.Item>
+                    <NavDropdown.Item as={Link} to='/admin/dashboard'>📊 Dashboard</NavDropdown.Item>
+                    <NavDropdown.Item as={Link} to='/admin/productlist'>🛍️ Edit Products</NavDropdown.Item>
+                    <NavDropdown.Item as={Link} to='/admin/orderlist'>🛒 Orders</NavDropdown.Item>
+                    <NavDropdown.Item as={Link} to='/admin/userlist'>👥 Users</NavDropdown.Item>
                     <NavDropdown.Divider />
-                    <NavDropdown.Item as={Link} to='/admin/productlist'>Products</NavDropdown.Item>
-                    <NavDropdown.Item as={Link} to='/admin/orderlist'>Orders</NavDropdown.Item>
-                    <NavDropdown.Item as={Link} to='/admin/userlist'>Users</NavDropdown.Item>
-                    <NavDropdown.Divider />
-                    <NavDropdown.Item as={Link} to='/admin/requests'>
-                      🔔 Requests
+                    <NavDropdown.Item as={Link} to='/admin/notifications'>
+                      🔔 Notifications
                       {unreadCount > 0 && (
                         <Badge pill bg='danger' style={{ marginLeft: '8px' }}>{unreadCount}</Badge>
                       )}
                     </NavDropdown.Item>
-                    <NavDropdown.Item as={Link} to='/admin/settings'>
-                      ⚙️ Settings
+                    <NavDropdown.Item as={Link} to='/admin/requests'>📩 Product Requests</NavDropdown.Item>
+                    <NavDropdown.Divider />
+                    <NavDropdown.Item as={Link} to='/admin/inventory'>📦 Inventory</NavDropdown.Item>
+                    <NavDropdown.Item as={Link} to='/admin/accounting'>💰 Accounting</NavDropdown.Item>
+                    <NavDropdown.Item as={Link} to='/admin/settings'>⚙️ Settings</NavDropdown.Item>
+                    <NavDropdown.Divider />
+                    <NavDropdown.Item onClick={logoutHandler} style={{ color: '#e74c3c', fontWeight: '700' }}>
+                      🚪 Log Out
                     </NavDropdown.Item>
                   </NavDropdown>
 
-                  {/* ✅ FIXED — Nav.Link na ni, dili na NavDropdown.Item */}
-                  <Nav.Link as={Link} to='/admin/inventory'>
-                    📦 Inventory
-                  </Nav.Link>
-
-                  {/* ✅ FIXED — Nav.Link na ni, dili na NavDropdown.Item */}
-                  <Nav.Link as={Link} to='/admin/accounting'>
-                    💰 Accounting
-                  </Nav.Link>
-
+                  {/* 🎨 Theme — RIGHT of Admin User */}
                   <ThemeDropdown currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} />
                 </>
               )}

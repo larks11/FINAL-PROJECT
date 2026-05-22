@@ -6,6 +6,8 @@ import Settings from '../models/settingsModel.js';
 import { calcPrices } from '../utils/calcPrices.js';
 import { verifyPayPalPayment, checkIfNewTransaction } from '../utils/paypal.js';
 
+
+
 const getDeliveryHours = (city = '') => {
   const c = city.toLowerCase();
   const nearbyLeyte = ['ormoc','tacloban','palo','tanauan','tolosa','dulag','abuyog','baybay','maasin','burauen','carigara','naval','catbalogan','calbayog'];
@@ -38,7 +40,6 @@ const addOrderItems = asyncHandler(async (req, res) => {
     return { ...itemFromClient, product: itemFromClient._id, price: match.price, _id: undefined };
   });
 
-  // Get settings for shipping fee + VAT
   let settings = await Settings.findOne({});
   if (!settings) settings = await Settings.create({});
 
@@ -84,7 +85,7 @@ const addOrderItems = asyncHandler(async (req, res) => {
 });
 
 const getMyOrders = asyncHandler(async (req, res) => {
-  const orders = await Order.find({ user: req.user._id });
+  const orders = await Order.find({ user: req.user._id }).sort({ createdAt: -1 });
   res.json(orders);
 });
 
@@ -195,8 +196,9 @@ const cancelOrder = asyncHandler(async (req, res) => {
   } else { res.status(404); throw new Error('Order not found'); }
 });
 
+// ✅ UPDATED: Bag-o na orders mag-una (newest first)
 const getOrders = asyncHandler(async (req, res) => {
-  const orders = await Order.find({}).populate('user', 'id name');
+  const orders = await Order.find({}).populate('user', 'id name').sort({ createdAt: -1 });
   res.json(orders);
 });
 
@@ -208,8 +210,18 @@ const deleteOrder = asyncHandler(async (req, res) => {
   } else { res.status(404); throw new Error('Order not found'); }
 });
 
+// ✅ Archive / Unarchive Order
+const archiveOrder = asyncHandler(async (req, res) => {
+  const order = await Order.findById(req.params.id);
+  if (!order) { res.status(404); throw new Error('Order not found'); }
+  if (!order.isDelivered) { res.status(400); throw new Error('Only delivered orders can be archived'); }
+  order.isArchived = !order.isArchived;
+  const updatedOrder = await order.save();
+  res.json(updatedOrder);
+});
+
 export {
   addOrderItems, getMyOrders, getOrderById, updateOrderToPaid,
   updateOrderToDelivered, prepareOrder, pickupOrder, advanceOrderStatuses,
-  cancelOrder, getOrders, deleteOrder,
+  cancelOrder, getOrders, deleteOrder, archiveOrder,
 };

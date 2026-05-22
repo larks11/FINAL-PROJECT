@@ -44,8 +44,9 @@ const orderSchema = mongoose.Schema(
     isCancelled:   { type: Boolean, default: false },
     cancelledAt:   { type: Date },
     cancelReason:  { type: String, default: '' },
+    isArchived:    { type: Boolean, default: false }, // ✅ NEW
 
-    // ✅ ORDER STATUS (gi-add ang missing fields!)
+    // ✅ ORDER STATUS
     orderStatus: {
       type: String,
       enum: [
@@ -66,10 +67,10 @@ const orderSchema = mongoose.Schema(
         note:      { type: String, default: '' },
       },
     ],
-    preparedAt:        { type: Date },
-    pickedUpAt:        { type: Date },
-    inTransitAt:       { type: Date },
-    outForDeliveryAt:  { type: Date },
+    preparedAt:            { type: Date },
+    pickedUpAt:            { type: Date },
+    inTransitAt:           { type: Date },
+    outForDeliveryAt:      { type: Date },
     estimatedDeliveryDate: { type: Date },
   },
   { timestamps: true }

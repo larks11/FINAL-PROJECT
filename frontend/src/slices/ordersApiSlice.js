@@ -79,6 +79,14 @@ export const orderApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Orders'],
     }),
+    // ✅ NEW: Archive Order
+    archiveOrder: builder.mutation({
+      query: (orderId) => ({
+        url: `${ORDERS_URL}/${orderId}/archive`,
+        method: 'PUT',
+      }),
+      invalidatesTags: ['Orders'],
+    }),
     // ── REPORTS ──
     getSalesReport: builder.query({
       query: (period = 'monthly') => ({
@@ -107,6 +115,7 @@ export const {
   useDeleteOrderMutation,
   usePrepareOrderMutation,
   usePickupOrderMutation,
+  useArchiveOrderMutation,
   useGetSalesReportQuery,
   useGetTopProductsQuery,
 } = orderApiSlice;

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Button, Form, InputGroup, Row, Col, } from 'react-bootstrap';
-import { FaSearch, FaTrash } from 'react-icons/fa';
+import { Button, Form, InputGroup, Row, Col } from 'react-bootstrap';
+import { FaSearch, FaTrash, FaArchive, FaBoxOpen } from 'react-icons/fa';
 import Message from '../../components/Message';
 import Loader from '../../components/Loader';
 import {
@@ -8,6 +8,7 @@ import {
   useDeleteOrderMutation,
   usePrepareOrderMutation,
   usePickupOrderMutation,
+  useArchiveOrderMutation,
 } from '../../slices/ordersApiSlice';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -15,17 +16,33 @@ import { toast } from 'react-toastify';
 const OrderListScreen = () => {
   const { data: orders, isLoading, error, refetch } = useGetOrdersQuery();
   const [deleteOrder, { isLoading: loadingDelete }] = useDeleteOrderMutation();
-  const [prepareOrder] = usePrepareOrderMutation();
-  const [pickupOrder]  = usePickupOrderMutation();
-  const [searchTerm, setSearchTerm]       = useState('');
-  const [filterStatus, setFilterStatus]   = useState('all');
+  const [prepareOrder]  = usePrepareOrderMutation();
+  const [pickupOrder]   = usePickupOrderMutation();
+  const [archiveOrder]  = useArchiveOrderMutation();
+
+  const [searchTerm, setSearchTerm]           = useState('');
+  const [filterStatus, setFilterStatus]       = useState('all');
   const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [showArchived, setShowArchived]       = useState(false);
 
   const deleteHandler = async (id) => {
-    if (window.confirm('Are you sure you want to delete this order?')) {
+    if (window.confirm('Are you sure you want to permanently delete this order?')) {
       try {
         await deleteOrder(id).unwrap();
         toast.success('Order deleted successfully');
+        refetch();
+      } catch (err) {
+        toast.error(err?.data?.message || err.error);
+      }
+    }
+  };
+
+  const archiveHandler = async (id, isArchived) => {
+    const action = isArchived ? 'unarchive' : 'archive';
+    if (window.confirm(`Are you sure you want to ${action} this order?`)) {
+      try {
+        await archiveOrder(id).unwrap();
+        toast.success(`Order ${action}d successfully`);
         refetch();
       } catch (err) {
         toast.error(err?.data?.message || err.error);
@@ -69,59 +86,88 @@ const OrderListScreen = () => {
 
   const allOrders = orders || [];
 
-  const filteredOrders = allOrders
-    .filter((o) => {
-      const status = o.isCancelled ? 'Cancelled' : o.orderStatus || 'Order Created';
-      if (filterStatus !== 'all' && status !== filterStatus) return false;
-      return (
-        o._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (o.user?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    });
+  // Separate archived from active
+  const visibleOrders = showArchived
+    ? allOrders.filter((o) => o.isArchived)
+    : allOrders.filter((o) => !o.isArchived);
 
+  const filteredOrders = visibleOrders.filter((o) => {
+    const status = o.isCancelled ? 'Cancelled' : o.orderStatus || 'Order Created';
+    if (filterStatus !== 'all' && status !== filterStatus) return false;
+    return (
+      o._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (o.user?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
+
+  const activeOrders = allOrders.filter((o) => !o.isArchived);
   const statusCounts = {
-    all: allOrders.length,
-    'Order Created': allOrders.filter((o) => !o.isCancelled && o.orderStatus === 'Order Created').length,
-    'Preparing':     allOrders.filter((o) => o.orderStatus === 'Preparing').length,
-    'In Transit':    allOrders.filter((o) => o.orderStatus === 'In Transit').length,
-    'Delivered':     allOrders.filter((o) => o.isDelivered).length,
-    'Cancelled':     allOrders.filter((o) => o.isCancelled).length,
+    all:             activeOrders.length,
+    'Order Created': activeOrders.filter((o) => !o.isCancelled && o.orderStatus === 'Order Created').length,
+    'Preparing':     activeOrders.filter((o) => o.orderStatus === 'Preparing').length,
+    'In Transit':    activeOrders.filter((o) => o.orderStatus === 'In Transit').length,
+    'Delivered':     activeOrders.filter((o) => o.isDelivered).length,
+    'Cancelled':     activeOrders.filter((o) => o.isCancelled).length,
   };
+  const archivedCount = allOrders.filter((o) => o.isArchived).length;
 
   return (
     <div>
       {/* HEADER */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
         <h1 style={{ color: 'var(--accent)', fontWeight: '800', fontSize: '24px', margin: 0 }}>
-          🛒 Orders
+          {showArchived ? '📁 Archived Orders' : '🛒 Orders'}
         </h1>
-        <span style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
-          {allOrders.length} total orders
-        </span>
-      </div>
-
-      {/* STATUS FILTER TABS */}
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
-        {Object.entries(statusCounts).map(([status, count]) => (
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <span style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
+            {allOrders.length} total orders
+          </span>
+          {/* Archive Toggle */}
           <button
-            key={status}
-            onClick={() => setFilterStatus(status)}
+            onClick={() => { setShowArchived(!showArchived); setFilterStatus('all'); }}
             style={{
-              backgroundColor: filterStatus === status ? 'var(--accent)' : 'var(--bg-soft)',
-              color: filterStatus === status ? 'var(--btn-text)' : 'var(--text-muted)',
-              border: `1px solid ${filterStatus === status ? 'var(--accent)' : 'var(--border)'}`,
-              borderRadius: '20px',
+              backgroundColor: showArchived ? 'var(--accent)' : 'transparent',
+              color: showArchived ? 'var(--btn-text)' : 'var(--text-muted)',
+              border: '1px solid var(--accent)',
+              borderRadius: '8px',
               padding: '5px 14px',
               fontSize: '12px',
               fontWeight: '700',
               cursor: 'pointer',
-              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
             }}
           >
-            {status === 'all' ? 'All' : status} ({count})
+            {showArchived ? <><FaBoxOpen /> Active Orders</> : <><FaArchive /> Archives ({archivedCount})</>}
           </button>
-        ))}
+        </div>
       </div>
+
+      {/* STATUS FILTER TABS — only show for active orders */}
+      {!showArchived && (
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
+          {Object.entries(statusCounts).map(([status, count]) => (
+            <button
+              key={status}
+              onClick={() => setFilterStatus(status)}
+              style={{
+                backgroundColor: filterStatus === status ? 'var(--accent)' : 'var(--bg-soft)',
+                color: filterStatus === status ? 'var(--btn-text)' : 'var(--text-muted)',
+                border: `1px solid ${filterStatus === status ? 'var(--accent)' : 'var(--border)'}`,
+                borderRadius: '20px',
+                padding: '5px 14px',
+                fontSize: '12px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              {status === 'all' ? 'All' : status} ({count})
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* SEARCH */}
       <Row className='mb-3'>
@@ -174,6 +220,7 @@ const OrderListScreen = () => {
                 {filteredOrders.length > 0 ? (
                   filteredOrders.map((order, index) => {
                     const status = order.isCancelled ? 'Cancelled' : order.orderStatus || 'Order Created';
+                    const isDelivered = order.isDelivered;
                     return (
                       <tr key={order._id}
                         style={{ borderBottom: '1px solid var(--border)', opacity: order.isCancelled ? 0.7 : 1 }}
@@ -203,9 +250,23 @@ const OrderListScreen = () => {
                           }}>
                             {status}
                           </span>
+                          {order.isArchived && (
+                            <span style={{
+                              backgroundColor: '#6c757d',
+                              color: '#fff',
+                              borderRadius: '20px',
+                              padding: '3px 8px',
+                              fontSize: '10px',
+                              fontWeight: '700',
+                              marginLeft: '6px',
+                            }}>
+                              Archived
+                            </span>
+                          )}
                         </td>
                         <td style={{ padding: '14px 16px' }}>
                           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                            {/* Details — always visible */}
                             <Link to={`/order/${order._id}`} style={{
                               backgroundColor: 'transparent',
                               color: 'var(--accent)',
@@ -219,6 +280,7 @@ const OrderListScreen = () => {
                               Details
                             </Link>
 
+                            {/* Prepare — only when Order Created */}
                             {!order.isCancelled && !order.isDelivered && order.orderStatus === 'Order Created' && (
                               <button
                                 onClick={() => handlePrepare(order._id)}
@@ -238,6 +300,7 @@ const OrderListScreen = () => {
                               </button>
                             )}
 
+                            {/* Pickup — only when Preparing */}
                             {!order.isCancelled && !order.isDelivered && order.orderStatus === 'Preparing' && (
                               <button
                                 onClick={() => handlePickup(order._id)}
@@ -257,20 +320,45 @@ const OrderListScreen = () => {
                               </button>
                             )}
 
-                            <button
-                              onClick={() => deleteHandler(order._id)}
-                              style={{
-                                backgroundColor: '#e74c3c',
-                                color: '#fff',
-                                border: 'none',
-                                borderRadius: '6px',
-                                padding: '4px 10px',
-                                fontSize: '12px',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              <FaTrash size={11} />
-                            </button>
+                            {/* ✅ Archive & Delete — ONLY when Delivered */}
+                            {isDelivered && (
+                              <>
+                                <button
+                                  onClick={() => archiveHandler(order._id, order.isArchived)}
+                                  title={order.isArchived ? 'Unarchive' : 'Archive'}
+                                  style={{
+                                    backgroundColor: order.isArchived ? '#6c757d' : '#3498db',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    padding: '4px 10px',
+                                    fontSize: '12px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                  }}
+                                >
+                                  {order.isArchived ? <FaBoxOpen size={11} /> : <FaArchive size={11} />}
+                                </button>
+
+                                <button
+                                  onClick={() => deleteHandler(order._id)}
+                                  title='Delete Order'
+                                  style={{
+                                    backgroundColor: '#e74c3c',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    padding: '4px 10px',
+                                    fontSize: '12px',
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  <FaTrash size={11} />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -279,7 +367,9 @@ const OrderListScreen = () => {
                 ) : (
                   <tr>
                     <td colSpan='6' style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                      {searchTerm ? `No orders found matching "${searchTerm}"` : 'No orders yet'}
+                      {searchTerm
+                        ? `No orders found matching "${searchTerm}"`
+                        : showArchived ? 'No archived orders yet' : 'No orders yet'}
                     </td>
                   </tr>
                 )}
