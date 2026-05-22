@@ -7,37 +7,43 @@ import Message from '../components/Message';
 import CheckoutSteps from '../components/CheckoutSteps';
 import Loader from '../components/Loader';
 import { useCreateOrderMutation } from '../slices/ordersApiSlice';
+import { useGetSettingsQuery } from '../slices/settingsApiSlice';
 import { clearCartItems } from '../slices/cartSlice';
 
 const formatPeso = (amount) =>
   new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(amount);
 
-const getShippingFee = (city = '') => {
+// ✅ Nagkuha na sa fees gikan sa DB settings
+const getShippingFee = (city = '', fees = {}) => {
   const location = city.toLowerCase();
-  const visayas = ['cebu','mandaue','lapu-lapu','lapulapu','talisay','danao','toledo','bogo','iloilo','bacolod','dumaguete','tagbilaran','boracay','roxas','ormoc','tacloban','palo','tanauan','tolosa','dulag','abuyog','baybay','maasin','burauen','carigara','naval','catbalogan','calbayog','leyte','samar','bohol','negros','panay','visayas'];
+  const visayas  = ['cebu','mandaue','lapu-lapu','lapulapu','talisay','danao','toledo','bogo','iloilo','bacolod','dumaguete','tagbilaran','boracay','roxas','ormoc','tacloban','palo','tanauan','tolosa','dulag','abuyog','baybay','maasin','burauen','carigara','naval','catbalogan','calbayog','leyte','samar','bohol','negros','panay','visayas'];
   const mindanao = ['davao','cagayan','cdo','cagayan de oro','zamboanga','general santos','gensan','cotabato','butuan','iligan','surigao','pagadian','koronadal','tacurong','kidapawan','midsayap','mindanao'];
-  if (visayas.some((k) => location.includes(k))) return 80;
-  if (mindanao.some((k) => location.includes(k))) return 150;
-  return 200;
+  const luzon    = ['manila','quezon','makati','pasig','marikina','caloocan','malabon','navotas','valenzuela','las pinas','paranaque','pasay','taguig','mandaluyong','san juan','muntinlupa','pateros','cavite','laguna','batangas','rizal','bulacan','pampanga','tarlac','pangasinan','bataan','zambales','nueva ecija','metro manila','ncr','luzon'];
+
+  if (visayas.some((k) => location.includes(k)))  return fees.visayas  ?? 80;
+  if (mindanao.some((k) => location.includes(k))) return fees.mindanao ?? 150;
+  if (luzon.some((k) => location.includes(k)))    return fees.luzon    ?? 200;
+  return fees.default ?? 150;
 };
 
 const getRegionLabel = (city = '') => {
   const location = city.toLowerCase();
-  const visayas = ['cebu','mandaue','lapu-lapu','lapulapu','talisay','danao','toledo','bogo','iloilo','bacolod','dumaguete','tagbilaran','boracay','roxas','ormoc','tacloban','palo','tanauan','tolosa','dulag','abuyog','baybay','maasin','burauen','carigara','naval','catbalogan','calbayog','leyte','samar','bohol','negros','panay','visayas'];
+  const visayas  = ['cebu','mandaue','lapu-lapu','lapulapu','talisay','danao','toledo','bogo','iloilo','bacolod','dumaguete','tagbilaran','boracay','roxas','ormoc','tacloban','palo','tanauan','tolosa','dulag','abuyog','baybay','maasin','burauen','carigara','naval','catbalogan','calbayog','leyte','samar','bohol','negros','panay','visayas'];
   const mindanao = ['davao','cagayan','cdo','cagayan de oro','zamboanga','general santos','gensan','cotabato','butuan','iligan','surigao','pagadian','koronadal','tacurong','kidapawan','midsayap','mindanao'];
-  if (visayas.some((k) => location.includes(k))) return 'Within Visayas';
+  if (visayas.some((k) => location.includes(k)))  return 'Within Visayas';
   if (mindanao.some((k) => location.includes(k))) return 'Visayas → Mindanao';
   return 'Visayas → Luzon';
 };
 
-const VAT_RATE = 12; // 12%
-
 const PlaceOrderScreen = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const cart = useSelector((state) => state.cart);
+  const cart     = useSelector((state) => state.cart);
 
   const [createOrder, { isLoading, error }] = useCreateOrderMutation();
+
+  // ✅ Fetch settings gikan sa DB
+  const { data: settings, isLoading: loadingSettings } = useGetSettingsQuery();
 
   useEffect(() => {
     if (!cart.shippingAddress.address) {
@@ -49,10 +55,13 @@ const PlaceOrderScreen = () => {
 
   const totalQty    = cart.cartItems.reduce((acc, item) => acc + item.qty, 0);
   const itemsPrice  = Number(cart.itemsPrice);
-  const shippingFee = getShippingFee(cart.shippingAddress.city);
-  const taxPrice    = Number(((VAT_RATE / 100) * itemsPrice).toFixed(2));
-  const totalPrice  = Number((itemsPrice + shippingFee + taxPrice).toFixed(2));
-  const regionLabel = getRegionLabel(cart.shippingAddress.city);
+  const city        = cart.shippingAddress.city || '';
+  const regionLabel = getRegionLabel(city);
+
+  // ✅ Nagkuha sa fees gikan sa DB — same sa backend
+  const fees        = settings?.shippingFees || {};
+  const shippingFee = getShippingFee(city, fees);
+  const totalPrice  = Number((itemsPrice + shippingFee).toFixed(2));
 
   const placeOrderHandler = async () => {
     try {
@@ -62,7 +71,7 @@ const PlaceOrderScreen = () => {
         paymentMethod:   cart.paymentMethod,
         itemsPrice,
         shippingPrice:   shippingFee,
-        taxPrice,
+        taxPrice:        0,
         totalPrice,
       }).unwrap();
       dispatch(clearCartItems());
@@ -71,6 +80,9 @@ const PlaceOrderScreen = () => {
       toast.error(err?.data?.message || err.message);
     }
   };
+
+  // ✅ Wait for settings to load
+  if (loadingSettings) return <Loader />;
 
   return (
     <>
@@ -122,6 +134,7 @@ const PlaceOrderScreen = () => {
           </ListGroup>
         </Col>
 
+        {/* ORDER SUMMARY */}
         <Col md={4}>
           <Card>
             <ListGroup variant='flush'>
@@ -129,6 +142,7 @@ const PlaceOrderScreen = () => {
                 <h2>Order Summary</h2>
               </ListGroup.Item>
 
+              {/* PAYMENT METHOD */}
               <ListGroup.Item style={{
                 backgroundColor: 'rgba(212,175,55,0.06)',
                 borderLeft: '3px solid var(--accent)',
@@ -141,6 +155,7 @@ const PlaceOrderScreen = () => {
                 </strong>
               </ListGroup.Item>
 
+              {/* ITEMS */}
               <ListGroup.Item>
                 <Row>
                   <Col>Item Cost ({totalQty} pcs)</Col>
@@ -148,6 +163,7 @@ const PlaceOrderScreen = () => {
                 </Row>
               </ListGroup.Item>
 
+              {/* SHIPPING FEE */}
               <ListGroup.Item style={{
                 backgroundColor: 'rgba(212,175,55,0.08)',
                 border: '1px solid var(--accent-dark)',
@@ -168,13 +184,7 @@ const PlaceOrderScreen = () => {
                 </Row>
               </ListGroup.Item>
 
-              <ListGroup.Item>
-                <Row>
-                  <Col>VAT ({VAT_RATE}%) 📊</Col>
-                  <Col>{formatPeso(taxPrice)}</Col>
-                </Row>
-              </ListGroup.Item>
-
+              {/* TOTAL */}
               <ListGroup.Item>
                 <Row>
                   <Col><strong>Total Amount</strong></Col>

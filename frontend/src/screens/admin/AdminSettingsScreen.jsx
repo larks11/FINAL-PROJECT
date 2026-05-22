@@ -14,15 +14,13 @@ const AdminSettingsScreen = () => {
   const [mindanao, setMindanao] = useState('');
   const [luzon,    setLuzon]    = useState('');
   const [def,      setDef]      = useState('');
-  const [vatRate,  setVatRate]  = useState('');
 
   useEffect(() => {
     if (settings) {
-      setVisayas(settings.shippingFees?.visayas  ?? 80);
+      setVisayas(settings.shippingFees?.visayas   ?? 80);
       setMindanao(settings.shippingFees?.mindanao ?? 150);
-      setLuzon(settings.shippingFees?.luzon    ?? 200);
-      setDef(settings.shippingFees?.default  ?? 150);
-      setVatRate(settings.vatRate ?? 0);
+      setLuzon(settings.shippingFees?.luzon       ?? 200);
+      setDef(settings.shippingFees?.default       ?? 150);
     }
   }, [settings]);
 
@@ -36,7 +34,7 @@ const AdminSettingsScreen = () => {
           luzon:    Number(luzon),
           default:  Number(def),
         },
-        vatRate: Number(vatRate),
+        vatRate: 0, // ✅ Always 0 — VAT tangtang na
       }).unwrap();
       toast.success('Settings updated successfully!');
       refetch();
@@ -102,7 +100,7 @@ const AdminSettingsScreen = () => {
           ⚙️ Store Settings
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px' }}>
-          Manage shipping fees and VAT rate
+          Manage shipping fees per region
         </p>
       </div>
 
@@ -115,8 +113,7 @@ const AdminSettingsScreen = () => {
             <div>
               <label style={labelStyle}>Within Visayas (₱)</label>
               <input
-                type='number'
-                min='0'
+                type='number' min='0'
                 value={visayas}
                 onChange={(e) => setVisayas(e.target.value)}
                 style={inputStyle}
@@ -131,8 +128,7 @@ const AdminSettingsScreen = () => {
             <div>
               <label style={labelStyle}>Visayas → Mindanao (₱)</label>
               <input
-                type='number'
-                min='0'
+                type='number' min='0'
                 value={mindanao}
                 onChange={(e) => setMindanao(e.target.value)}
                 style={inputStyle}
@@ -147,8 +143,7 @@ const AdminSettingsScreen = () => {
             <div>
               <label style={labelStyle}>Visayas → Luzon (₱)</label>
               <input
-                type='number'
-                min='0'
+                type='number' min='0'
                 value={luzon}
                 onChange={(e) => setLuzon(e.target.value)}
                 style={inputStyle}
@@ -163,8 +158,7 @@ const AdminSettingsScreen = () => {
             <div>
               <label style={labelStyle}>Default / Others (₱)</label>
               <input
-                type='number'
-                min='0'
+                type='number' min='0'
                 value={def}
                 onChange={(e) => setDef(e.target.value)}
                 style={inputStyle}
@@ -177,51 +171,31 @@ const AdminSettingsScreen = () => {
             </div>
 
           </div>
-        </SectionCard>
 
-        {/* VAT */}
-        <SectionCard title='VAT Rate' icon='📊'>
-          <div style={{ maxWidth: '260px' }}>
-            <label style={labelStyle}>VAT Percentage (%)</label>
-            <input
-              type='number'
-              min='0'
-              max='100'
-              step='0.01'
-              value={vatRate}
-              onChange={(e) => setVatRate(e.target.value)}
-              style={inputStyle}
-              onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
-              onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
-            />
-            <small style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
-              Set to 0 to disable VAT. e.g. 12 = 12% VAT
-            </small>
-          </div>
-
-          {/* VAT PREVIEW */}
-          {Number(vatRate) > 0 && (
-            <div style={{
-              marginTop: '16px',
-              backgroundColor: 'var(--bg-soft)',
-              border: '1px solid var(--accent)',
-              borderRadius: '10px',
-              padding: '12px 16px',
-              fontSize: '13px',
-              color: 'var(--text-muted)',
-            }}>
-              <strong style={{ color: 'var(--accent)' }}>Preview:</strong>
-              <p style={{ margin: '6px 0 0', color: 'var(--text-main)' }}>
-                On a ₱10,000 order:
-              </p>
-              <p style={{ margin: '4px 0 0', color: 'var(--text-main)', fontWeight: '700' }}>
-                VAT = ₱{(10000 * Number(vatRate) / 100).toLocaleString('en-PH')}
-              </p>
-              <p style={{ margin: '4px 0 0', color: 'var(--accent)', fontWeight: '800' }}>
-                Total = ₱{(10000 + (10000 * Number(vatRate) / 100)).toLocaleString('en-PH')}
-              </p>
+          {/* SHIPPING PREVIEW */}
+          <div style={{
+            marginTop: '16px',
+            backgroundColor: 'var(--bg-soft)',
+            border: '1px solid var(--accent)',
+            borderRadius: '10px',
+            padding: '12px 16px',
+            fontSize: '13px',
+          }}>
+            <strong style={{ color: 'var(--accent)' }}>Preview:</strong>
+            <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {[
+                { label: 'Within Visayas', val: visayas },
+                { label: 'Visayas → Mindanao', val: mindanao },
+                { label: 'Visayas → Luzon', val: luzon },
+                { label: 'Default / Others', val: def },
+              ].map((r) => (
+                <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-main)' }}>
+                  <span>{r.label}</span>
+                  <strong style={{ color: 'var(--accent)' }}>₱{Number(r.val).toLocaleString('en-PH')}</strong>
+                </div>
+              ))}
             </div>
-          )}
+          </div>
         </SectionCard>
 
         {/* SAVE BUTTON */}
