@@ -332,7 +332,7 @@ const OrderScreen = () => {
               <p><strong>Method: </strong>{order.paymentMethod}</p>
               <p><strong>Items: </strong>{formatPeso(order.itemsPrice)}</p>
               <p>
-                <strong>Shipping Fee (1%): </strong>
+                <strong>Shipping Fee: </strong>
                 <span style={{ color: 'var(--accent)', fontWeight: '700' }}>
                   {formatPeso(order.shippingPrice)}
                 </span>
@@ -398,7 +398,7 @@ const OrderScreen = () => {
                 borderRadius: '6px',
               }}>
                 <Row>
-                  <Col><strong>Shipping Fee (1%) 🚚</strong></Col>
+                  <Col><strong>Shipping Fee 🚚</strong></Col>
                   <Col>
                     <strong style={{ color: 'var(--accent)' }}>
                       {formatPeso(order.shippingPrice)}

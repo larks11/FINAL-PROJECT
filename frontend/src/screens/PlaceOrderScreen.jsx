@@ -30,6 +30,8 @@ const getRegionLabel = (city = '') => {
   return 'Visayas → Luzon';
 };
 
+const VAT_RATE = 12; // 12%
+
 const PlaceOrderScreen = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -48,7 +50,8 @@ const PlaceOrderScreen = () => {
   const totalQty    = cart.cartItems.reduce((acc, item) => acc + item.qty, 0);
   const itemsPrice  = Number(cart.itemsPrice);
   const shippingFee = getShippingFee(cart.shippingAddress.city);
-  const totalPrice  = Number((itemsPrice + shippingFee).toFixed(2));
+  const taxPrice    = Number(((VAT_RATE / 100) * itemsPrice).toFixed(2));
+  const totalPrice  = Number((itemsPrice + shippingFee + taxPrice).toFixed(2));
   const regionLabel = getRegionLabel(cart.shippingAddress.city);
 
   const placeOrderHandler = async () => {
@@ -59,7 +62,7 @@ const PlaceOrderScreen = () => {
         paymentMethod:   cart.paymentMethod,
         itemsPrice,
         shippingPrice:   shippingFee,
-        taxPrice:        0,
+        taxPrice,
         totalPrice,
       }).unwrap();
       dispatch(clearCartItems());
@@ -162,6 +165,13 @@ const PlaceOrderScreen = () => {
                       {formatPeso(shippingFee)}
                     </strong>
                   </Col>
+                </Row>
+              </ListGroup.Item>
+
+              <ListGroup.Item>
+                <Row>
+                  <Col>VAT ({VAT_RATE}%) 📊</Col>
+                  <Col>{formatPeso(taxPrice)}</Col>
                 </Row>
               </ListGroup.Item>
 
