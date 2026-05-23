@@ -130,9 +130,9 @@ const AdminRequestScreen = () => {
                   {r.message || '—'}
                 </td>
                 <td>
-                  <Badge bg={r.status === 'available' ? 'success' : 'warning'}>
-                    {r.status === 'available' ? '✅ Available' : '⏳ Pending'}
-                  </Badge>
+                  {r.status === 'available' && (
+                    <Badge bg='success'>✅ Available</Badge>
+                  )}
                   {!r.isRead && (
                     <Badge bg='danger' style={{ marginLeft: '5px' }}>NEW</Badge>
                   )}
@@ -184,7 +184,6 @@ const AdminRequestScreen = () => {
               flexDirection: 'column',
               gap: '10px',
             }}>
-              {/* Original message */}
               <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                 <div style={{
                   maxWidth: '70%',
@@ -205,7 +204,6 @@ const AdminRequestScreen = () => {
                 </div>
               </div>
 
-              {/* Replies */}
               {selectedRequest.replies?.map((reply, i) => (
                 <div
                   key={i}

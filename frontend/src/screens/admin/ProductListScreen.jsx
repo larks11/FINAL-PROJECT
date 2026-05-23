@@ -23,27 +23,26 @@ const ProductListScreen = () => {
   const [uploadProductImage, { isLoading: loadingUpload }] = useUploadProductImageMutation();
   const [toggleArchive, { isLoading: loadingArchive }] = useToggleArchiveProductMutation();
 
-  const [searchTerm, setSearchTerm]         = useState('');
-  const [showArchived, setShowArchived]     = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('all'); // ✅ NEW
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('all');
 
   const [showModal, setShowModal] = useState(false);
-  const [name, setName]             = useState('');
-  const [price, setPrice]           = useState('');
-  const [image, setImage]           = useState('');
-  const [brand, setBrand]           = useState('');
-  const [category, setCategory]     = useState('');
+  const [name, setName] = useState('');
+  const [price, setPrice] = useState('');
+  const [image, setImage] = useState('');
+  const [brand, setBrand] = useState('');
+  const [category, setCategory] = useState('');
   const [countInStock, setCountInStock] = useState('');
-  const [description, setDescription]   = useState('');
+  const [description, setDescription] = useState('');
   const [defaultColorName, setDefaultColorName] = useState('');
-  const [colorVariants, setColorVariants]       = useState([]);
+  const [colorVariants, setColorVariants] = useState([]);
 
   const resetForm = () => {
     setName(''); setPrice(''); setImage('');
     setBrand(''); setCategory('');
     setCountInStock(''); setDescription('');
-    setDefaultColorName('');
-    setColorVariants([]);
+    setDefaultColorName(''); setColorVariants([]);
   };
 
   const uploadFileHandler = async (e) => {
@@ -120,20 +119,19 @@ const ProductListScreen = () => {
   };
 
   const allProducts = data?.products || [];
-
-  // ✅ Get unique categories automatically from products
   const categories = ['all', ...new Set(allProducts.map((p) => p.category).filter(Boolean).sort())];
 
   const filteredProducts = allProducts
     .filter((p) => showArchived ? p.isArchived : !p.isArchived)
-    .filter((p) => selectedCategory === 'all' || p.category === selectedCategory) // ✅ Category filter
+    .filter((p) => selectedCategory === 'all' || p.category === selectedCategory)
     .filter((p) =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.brand.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-  const soldOutCount  = allProducts.filter((p) => p.countInStock === 0).length;
+  const soldOutCount = allProducts.filter((p) => p.countInStock === 0 && (p.reservedStock || 0) === 0).length;
+  const reservedCount = allProducts.filter((p) => (p.reservedStock || 0) > 0).length;
   const archivedCount = allProducts.filter((p) => p.isArchived).length;
 
   return (
@@ -147,6 +145,11 @@ const ProductListScreen = () => {
                 {soldOutCount} Sold Out
               </Badge>
             )}
+            {reservedCount > 0 && (
+              <Badge bg='warning' text='dark' style={{ fontSize: '13px', marginLeft: '6px' }}>
+                {reservedCount} Reserved
+              </Badge>
+            )}
           </h1>
         </Col>
         <Col className='text-end'>
@@ -156,6 +159,7 @@ const ProductListScreen = () => {
         </Col>
       </Row>
 
+      {/* TOGGLE ARCHIVED */}
       <Row className='mb-3'>
         <Col>
           <Button
@@ -171,13 +175,13 @@ const ProductListScreen = () => {
           </Button>
           {showArchived && (
             <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
-              Viewing archived/sold-out products — hidden from homepage
+              Viewing archived products — hidden from homepage
             </span>
           )}
         </Col>
       </Row>
 
-      {/* ✅ CATEGORY FILTER BUTTONS — auto-populated from products */}
+      {/* CATEGORY FILTER */}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
         {categories.map((cat) => {
           const count = cat === 'all'
@@ -191,12 +195,9 @@ const ProductListScreen = () => {
                 backgroundColor: selectedCategory === cat ? 'var(--accent)' : 'var(--bg-soft)',
                 color: selectedCategory === cat ? 'var(--btn-text)' : 'var(--text-muted)',
                 border: `1px solid ${selectedCategory === cat ? 'var(--accent)' : 'var(--border)'}`,
-                borderRadius: '20px',
-                padding: '5px 14px',
-                fontSize: '12px',
-                fontWeight: '700',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
+                borderRadius: '20px', padding: '5px 14px',
+                fontSize: '12px', fontWeight: '700',
+                cursor: 'pointer', transition: 'all 0.2s',
               }}
             >
               {cat === 'all' ? 'All' : cat} ({count})
@@ -251,51 +252,70 @@ const ProductListScreen = () => {
             </thead>
             <tbody>
               {filteredProducts.length > 0 ? (
-                filteredProducts.map((product, index) => (
-                  <tr key={product._id} style={{ opacity: product.isArchived ? 0.6 : 1 }}>
-                    <td style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: '600' }}>
-                      {index + 1}
-                    </td>
-                    <td>{product.name}</td>
-                    <td>₱{product.price.toLocaleString('en-PH')}</td>
-                    <td>
-                      <span style={{
-                        fontWeight: '700',
-                        color: product.countInStock === 0 ? '#e74c3c'
-                          : product.countInStock <= 5 ? '#e67e22' : '#2ecc71',
-                      }}>
-                        {product.countInStock === 0 ? 'SOLD OUT' : product.countInStock}
-                      </span>
-                    </td>
-                    <td>{product.category}</td>
-                    <td>{product.brand}</td>
-                    <td>
-                      {product.isArchived ? (
-                        <Badge bg='secondary'>Archived</Badge>
-                      ) : product.countInStock === 0 ? (
-                        <Badge bg='danger'>Sold Out</Badge>
-                      ) : product.countInStock <= 5 ? (
-                        <Badge bg='warning' text='dark'>Low Stock</Badge>
-                      ) : (
-                        <Badge bg='success'>Active</Badge>
-                      )}
-                    </td>
-                    <td>
-                      <Button as={Link} to={`/admin/product/${product._id}/edit`}
-                        variant='light' className='btn-sm mx-1' title='Edit'>
-                        <FaEdit />
-                      </Button>
-                      <Button
-                        variant={product.isArchived ? 'outline-success' : 'outline-warning'}
-                        className='btn-sm mx-1'
-                        onClick={() => archiveHandler(product._id, product.isArchived, product.name)}
-                        title={product.isArchived ? 'Unarchive' : 'Archive'}
-                      >
-                        {product.isArchived ? <FaBoxOpen /> : <FaArchive />}
-                      </Button>
-                    </td>
-                  </tr>
-                ))
+                filteredProducts.map((product, index) => {
+                  const reserved = product.reservedStock || 0;
+                  const available = product.countInStock - reserved;
+                  const isSoldOut = product.countInStock === 0 && reserved === 0;
+                  const isFullyReserved = product.countInStock > 0 && available <= 0;
+
+                  return (
+                    <tr key={product._id} style={{ opacity: product.isArchived ? 0.6 : 1 }}>
+                      <td style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: '600' }}>
+                        {index + 1}
+                      </td>
+                      <td>{product.name}</td>
+                      <td>₱{product.price.toLocaleString('en-PH')}</td>
+                      <td>
+                        {/* ✅ UPDATED STOCK DISPLAY */}
+                        <div>
+                          <span style={{
+                            fontWeight: '700',
+                            color: isSoldOut ? '#e74c3c'
+                              : isFullyReserved ? '#e67e22'
+                              : available <= 5 ? '#e67e22' : '#2ecc71',
+                            display: 'block',
+                          }}>
+                            {isSoldOut ? 'SOLD OUT' : `${available} avail.`}
+                          </span>
+                          {reserved > 0 && (
+                            <span style={{ fontSize: '10px', color: '#e67e22', fontWeight: '600' }}>
+                              🔒 {reserved} reserved
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td>{product.category}</td>
+                      <td>{product.brand}</td>
+                      <td>
+                        {product.isArchived ? (
+                          <Badge bg='secondary'>Archived</Badge>
+                        ) : isSoldOut ? (
+                          <Badge bg='danger'>Sold Out</Badge>
+                        ) : isFullyReserved ? (
+                          <Badge bg='warning' text='dark'>Processing</Badge>
+                        ) : available <= 5 ? (
+                          <Badge bg='warning' text='dark'>Low Stock</Badge>
+                        ) : (
+                          <Badge bg='success'>Active</Badge>
+                        )}
+                      </td>
+                      <td>
+                        <Button as={Link} to={`/admin/product/${product._id}/edit`}
+                          variant='light' className='btn-sm mx-1' title='Edit'>
+                          <FaEdit />
+                        </Button>
+                        <Button
+                          variant={product.isArchived ? 'outline-success' : 'outline-warning'}
+                          className='btn-sm mx-1'
+                          onClick={() => archiveHandler(product._id, product.isArchived, product.name)}
+                          title={product.isArchived ? 'Unarchive' : 'Archive'}
+                        >
+                          {product.isArchived ? <FaBoxOpen /> : <FaArchive />}
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan='8' className='text-center'>
@@ -333,7 +353,6 @@ const ProductListScreen = () => {
                 </Form.Group>
               </Col>
             </Row>
-
             <Form.Group className='mb-3'>
               <Form.Label>Image</Form.Label>
               <Form.Control type='text' placeholder='Image URL' value={image} onChange={(e) => setImage(e.target.value)} className='mb-2' />
@@ -343,7 +362,6 @@ const ProductListScreen = () => {
                 <img src={image} alt='preview' style={{ marginTop: '10px', height: '100px', objectFit: 'contain', border: '1px solid var(--border)', borderRadius: '8px', padding: '4px' }} />
               )}
             </Form.Group>
-
             <Row>
               <Col md={6}>
                 <Form.Group className='mb-3'>
@@ -358,12 +376,10 @@ const ProductListScreen = () => {
                 </Form.Group>
               </Col>
             </Row>
-
             <Form.Group className='mb-3'>
               <Form.Label>Count In Stock</Form.Label>
               <Form.Control type='number' placeholder='Enter stock quantity' value={countInStock} onChange={(e) => setCountInStock(e.target.value)} />
             </Form.Group>
-
             <Form.Group className='mb-3'>
               <Form.Label>Description</Form.Label>
               <Form.Control
@@ -374,28 +390,22 @@ const ProductListScreen = () => {
                 style={{ fontFamily: 'monospace', fontSize: '13px' }}
               />
               <Form.Text style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
-                💡 Pwede mag-Enter para mag-line break. Example: "Display: 6.5 inch\nRAM: 8GB\nStorage: 256GB"
+                💡 Example: "Display: 6.5 inch\nRAM: 8GB\nStorage: 256GB"
               </Form.Text>
             </Form.Group>
 
-            {/* COLOR VARIANTS SECTION */}
-            <div style={{
-              border: '1px solid var(--accent-dark)',
-              borderRadius: '10px',
-              padding: '16px',
-              backgroundColor: 'rgba(212,175,55,0.04)',
-            }}>
+            {/* COLOR VARIANTS */}
+            <div style={{ border: '1px solid var(--accent-dark)', borderRadius: '10px', padding: '16px', backgroundColor: 'rgba(212,175,55,0.04)' }}>
               <h6 style={{ color: 'var(--accent)', marginBottom: '14px' }}>
                 🎨 Color Variants <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>(optional)</span>
               </h6>
-
               <Form.Group className='mb-3'>
                 <Form.Label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-main)' }}>
                   Main / Default Color Name
                 </Form.Label>
                 <Form.Control
                   type='text' size='sm'
-                  placeholder='e.g. Titanium Grey, Midnight Black, Starlight...'
+                  placeholder='e.g. Titanium Grey, Midnight Black...'
                   value={defaultColorName}
                   onChange={(e) => setDefaultColorName(e.target.value)}
                 />
@@ -403,23 +413,17 @@ const ProductListScreen = () => {
                   💡 Kini ang pangalan sa main image / default na makita sa product.
                 </Form.Text>
               </Form.Group>
-
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
-                <Button
-                  type='button' size='sm'
-                  onClick={addColorVariant}
-                  style={{ backgroundColor: 'var(--accent)', border: 'none', color: '#000', fontWeight: '600' }}
-                >
+                <Button type='button' size='sm' onClick={addColorVariant}
+                  style={{ backgroundColor: 'var(--accent)', border: 'none', color: '#000', fontWeight: '600' }}>
                   + Add Color Variant
                 </Button>
               </div>
-
               {colorVariants.length === 0 && (
                 <p style={{ color: 'var(--text-muted)', fontSize: '12px', textAlign: 'center', margin: 0 }}>
                   Walay additional color variants.
                 </p>
               )}
-
               {colorVariants.map((variant, index) => (
                 <Card key={index} style={{ marginBottom: '10px', backgroundColor: 'var(--bg-soft)', border: '1px solid var(--border)' }}>
                   <Card.Body className='py-2'>
@@ -428,37 +432,16 @@ const ProductListScreen = () => {
                         <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: variant.colorHex, border: '2px solid var(--border)' }} />
                       </Col>
                       <Col md={3}>
-                        <Form.Control
-                          type='text' size='sm'
-                          placeholder='Color name'
-                          value={variant.colorName}
-                          onChange={(e) => updateColorVariant(index, 'colorName', e.target.value)}
-                        />
+                        <Form.Control type='text' size='sm' placeholder='Color name' value={variant.colorName} onChange={(e) => updateColorVariant(index, 'colorName', e.target.value)} />
                       </Col>
                       <Col md={2}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <input
-                            type='color'
-                            value={variant.colorHex}
-                            onChange={(e) => updateColorVariant(index, 'colorHex', e.target.value)}
-                            style={{ width: '32px', height: '32px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                          />
-                          <Form.Control
-                            type='text' size='sm'
-                            value={variant.colorHex}
-                            onChange={(e) => updateColorVariant(index, 'colorHex', e.target.value)}
-                            style={{ width: '80px' }}
-                          />
+                          <input type='color' value={variant.colorHex} onChange={(e) => updateColorVariant(index, 'colorHex', e.target.value)} style={{ width: '32px', height: '32px', border: 'none', borderRadius: '4px', cursor: 'pointer' }} />
+                          <Form.Control type='text' size='sm' value={variant.colorHex} onChange={(e) => updateColorVariant(index, 'colorHex', e.target.value)} style={{ width: '80px' }} />
                         </div>
                       </Col>
                       <Col md={4}>
-                        <Form.Control
-                          type='text' size='sm'
-                          placeholder='Image URL'
-                          value={variant.image}
-                          onChange={(e) => updateColorVariant(index, 'image', e.target.value)}
-                          className='mb-1'
-                        />
+                        <Form.Control type='text' size='sm' placeholder='Image URL' value={variant.image} onChange={(e) => updateColorVariant(index, 'image', e.target.value)} className='mb-1' />
                         <Form.Control type='file' size='sm' onChange={(e) => uploadColorImageHandler(e, index)} />
                       </Col>
                       <Col md={1}>

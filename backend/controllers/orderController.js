@@ -6,8 +6,6 @@ import Settings from '../models/settingsModel.js';
 import { calcPrices } from '../utils/calcPrices.js';
 import { verifyPayPalPayment, checkIfNewTransaction } from '../utils/paypal.js';
 
-
-
 const getDeliveryHours = (city = '') => {
   const c = city.toLowerCase();
   const nearbyLeyte = ['ormoc','tacloban','palo','tanauan','tolosa','dulag','abuyog','baybay','maasin','burauen','carigara','naval','catbalogan','calbayog'];
@@ -17,6 +15,7 @@ const getDeliveryHours = (city = '') => {
   return { inTransit: 3, outForDelivery: 80, delivered: 92 };
 };
 
+// ── ADD ORDER — reserve stock lang, dili pa i-deduct ────────────────────────
 const addOrderItems = asyncHandler(async (req, res) => {
   const { orderItems, shippingAddress, paymentMethod } = req.body;
 
@@ -29,9 +28,11 @@ const addOrderItems = asyncHandler(async (req, res) => {
 
   for (const itemFromClient of orderItems) {
     const match = itemsFromDB.find((i) => i._id.toString() === itemFromClient._id);
-    if (match.countInStock < itemFromClient.qty) {
+    // ✅ Available = countInStock - reservedStock
+    const available = match.countInStock - (match.reservedStock || 0);
+    if (available < itemFromClient.qty) {
       res.status(400);
-      throw new Error(`Not enough stock for ${match.name}`);
+      throw new Error(`Not enough available stock for ${match.name}. Available: ${available}`);
     }
   }
 
@@ -69,8 +70,11 @@ const addOrderItems = asyncHandler(async (req, res) => {
 
   const createdOrder = await order.save();
 
+  // ✅ Reserve stock lang — dili pa i-deduct ang countInStock
   for (const item of orderItems) {
-    await Product.findByIdAndUpdate(item._id, { $inc: { countInStock: -item.qty } });
+    await Product.findByIdAndUpdate(item._id, {
+      $inc: { reservedStock: item.qty },
+    });
   }
 
   await Request.create({
@@ -106,7 +110,12 @@ const updateOrderToPaid = asyncHandler(async (req, res) => {
     if (!paidCorrectAmount) throw new Error('Incorrect amount paid');
     order.isPaid = true;
     order.paidAt = Date.now();
-    order.paymentResult = { id: req.body.id, status: req.body.status, update_time: req.body.update_time, email_address: req.body.payer.email_address };
+    order.paymentResult = {
+      id: req.body.id,
+      status: req.body.status,
+      update_time: req.body.update_time,
+      email_address: req.body.payer.email_address,
+    };
     const updatedOrder = await order.save();
     res.json(updatedOrder);
   } else { res.status(404); throw new Error('Order not found'); }
@@ -134,12 +143,15 @@ const prepareOrder = asyncHandler(async (req, res) => {
   res.json(updatedOrder);
 });
 
+// ✅ Pag Pickup — didto na i-deduct ang countInStock ug i-release ang reservedStock
 const pickupOrder = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id);
   if (!order) { res.status(404); throw new Error('Order not found'); }
   if (order.orderStatus !== 'Preparing') { res.status(400); throw new Error('Order must be in "Preparing" status before pickup'); }
+
   const now = new Date();
   const hours = getDeliveryHours(order.shippingAddress.city);
+
   order.orderStatus = 'Picked Up';
   order.pickedUpAt = now;
   order.inTransitAt = new Date(now.getTime() + hours.inTransit * 3600000);
@@ -147,25 +159,44 @@ const pickupOrder = asyncHandler(async (req, res) => {
   order.deliveredAt = new Date(now.getTime() + hours.delivered * 3600000);
   order.isDelivered = false;
   order.statusHistory.push({ status: 'Picked Up', timestamp: now, note: 'Ormoc City Courier' });
+
+  // ✅ I-deduct na ang actual countInStock + i-release ang reservedStock
+  for (const item of order.orderItems) {
+    await Product.findByIdAndUpdate(item.product, {
+      $inc: {
+        countInStock: -item.qty,
+        reservedStock: -item.qty,
+      },
+    });
+  }
+
   const updatedOrder = await order.save();
   res.json(updatedOrder);
 });
 
 const advanceOrderStatuses = async () => {
   const now = new Date();
-  const orders = await Order.find({ orderStatus: { $in: ['Picked Up', 'In Transit', 'Out for Delivery'] }, isCancelled: false, isDelivered: false });
+  const orders = await Order.find({
+    orderStatus: { $in: ['Picked Up', 'In Transit', 'Out for Delivery'] },
+    isCancelled: false,
+    isDelivered: false,
+  });
+
   for (const order of orders) {
     let changed = false;
+
     if (order.orderStatus === 'Picked Up' && order.inTransitAt && now >= order.inTransitAt) {
       order.orderStatus = 'In Transit';
       order.statusHistory.push({ status: 'In Transit', timestamp: order.inTransitAt, note: 'Ormoc Distribution Hub' });
       changed = true;
     }
+
     if ((order.orderStatus === 'In Transit' || changed) && order.outForDeliveryAt && now >= order.outForDeliveryAt) {
       order.orderStatus = 'Out for Delivery';
       order.statusHistory.push({ status: 'Out for Delivery', timestamp: order.outForDeliveryAt, note: `${order.shippingAddress.city} Delivery Hub` });
       changed = true;
     }
+
     if ((order.orderStatus === 'Out for Delivery' || changed) && order.deliveredAt && now >= order.deliveredAt) {
       order.orderStatus = 'Delivered';
       order.isDelivered = true;
@@ -173,30 +204,51 @@ const advanceOrderStatuses = async () => {
       order.statusHistory.push({ status: 'Delivered', timestamp: now, note: `${order.shippingAddress.address}, ${order.shippingAddress.city}` });
       changed = true;
     }
+
     if (changed) await order.save();
   }
 };
 
+// ✅ Cancel — i-restore ang reservedStock ug countInStock kung wala pa ma-pickup
 const cancelOrder = asyncHandler(async (req, res) => {
   const { reason } = req.body;
   const order = await Order.findById(req.params.id);
+
   if (order) {
     if (order.isCancelled) { res.status(400); throw new Error('Order is already cancelled'); }
     if (order.isDelivered) { res.status(400); throw new Error('Cannot cancel a delivered order'); }
+
+    const alreadyPickedUp = ['Picked Up', 'In Transit', 'Out for Delivery'].includes(order.orderStatus);
+
     for (const item of order.orderItems) {
-      await Product.findByIdAndUpdate(item.product, { $inc: { countInStock: item.qty } });
+      if (alreadyPickedUp) {
+        // Stock na gi-deduct na pag pickup — i-restore
+        await Product.findByIdAndUpdate(item.product, {
+          $inc: { countInStock: item.qty },
+        });
+      } else {
+        // Wala pa ma-pickup — i-release lang ang reservation
+        await Product.findByIdAndUpdate(item.product, {
+          $inc: { reservedStock: -item.qty },
+        });
+      }
     }
+
     order.isCancelled = true;
     order.cancelledAt = Date.now();
     order.cancelReason = reason || 'Cancelled by user';
     order.orderStatus = 'Cancelled';
-    order.statusHistory.push({ status: 'Cancelled', timestamp: new Date(), note: reason || 'Cancelled by user' });
+    order.statusHistory.push({
+      status: 'Cancelled',
+      timestamp: new Date(),
+      note: reason || 'Cancelled by user',
+    });
+
     const updatedOrder = await order.save();
     res.json(updatedOrder);
   } else { res.status(404); throw new Error('Order not found'); }
 });
 
-// ✅ UPDATED: Bag-o na orders mag-una (newest first)
 const getOrders = asyncHandler(async (req, res) => {
   const orders = await Order.find({}).populate('user', 'id name').sort({ createdAt: -1 });
   res.json(orders);
@@ -210,7 +262,6 @@ const deleteOrder = asyncHandler(async (req, res) => {
   } else { res.status(404); throw new Error('Order not found'); }
 });
 
-// ✅ Archive / Unarchive Order
 const archiveOrder = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id);
   if (!order) { res.status(404); throw new Error('Order not found'); }

@@ -6,9 +6,12 @@ const Product = ({ product }) => {
   const [hoveredColor, setHoveredColor] = useState(null);
   const displayImage = hoveredColor?.image || product.image;
 
-  // NEW badge logic — 2 days = 48 hours
   const isNew = product.createdAt &&
     (new Date() - new Date(product.createdAt)) < 48 * 60 * 60 * 1000;
+
+  const available = product.countInStock - (product.reservedStock || 0);
+  const isSoldOut = product.countInStock === 0;
+  const isLowStock = available > 0 && available <= 5;
 
   return (
     <div
@@ -41,35 +44,27 @@ const Product = ({ product }) => {
         position: 'absolute', top: '12px', left: '12px',
         zIndex: 10, display: 'flex', flexDirection: 'column', gap: '4px',
       }}>
-        {/* NEW BADGE */}
-        {isNew && product.countInStock > 0 && (
+        {isNew && !isSoldOut && (
           <span style={{
-            backgroundColor: '#27ae60',
-            color: '#fff',
-            fontSize: '10px',
-            fontWeight: '800',
-            padding: '3px 8px',
-            borderRadius: '20px',
-            letterSpacing: '1px',
+            backgroundColor: '#27ae60', color: '#fff',
+            fontSize: '10px', fontWeight: '800',
+            padding: '3px 8px', borderRadius: '20px', letterSpacing: '1px',
             boxShadow: '0 2px 6px rgba(39,174,96,0.5)',
-            animation: 'pulse 1.5s infinite',
-          }}>
-            ✨ NEW
-          </span>
+          }}>✨ NEW</span>
         )}
-        {product.countInStock === 0 && (
+        {isSoldOut && (
           <span style={{
             backgroundColor: '#e74c3c', color: '#fff',
             fontSize: '10px', fontWeight: '700',
             padding: '3px 8px', borderRadius: '20px', letterSpacing: '0.5px',
           }}>SOLD OUT</span>
         )}
-        {product.countInStock > 0 && product.countInStock <= 5 && (
+        {isLowStock && (
           <span style={{
             backgroundColor: '#e67e22', color: '#fff',
             fontSize: '10px', fontWeight: '700',
             padding: '3px 8px', borderRadius: '20px',
-          }}>ONLY {product.countInStock} LEFT</span>
+          }}>ONLY {available} LEFT</span>
         )}
       </div>
 
@@ -87,7 +82,8 @@ const Product = ({ product }) => {
             style={{
               maxHeight: '160px', maxWidth: '100%',
               objectFit: 'contain',
-              opacity: product.countInStock === 0 ? 0.45 : 1,
+              opacity: isSoldOut ? 0.45 : 1,
+              filter: 'none',
               transition: 'transform 0.4s ease, opacity 0.2s',
             }}
             onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
@@ -136,7 +132,7 @@ const Product = ({ product }) => {
           </div>
         )}
 
-        {/* PRICE + VIEW BUTTON */}
+        {/* PRICE + VIEW */}
         <div style={{
           marginTop: 'auto', paddingTop: '10px',
           borderTop: '1px solid var(--border)',

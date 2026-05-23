@@ -39,7 +39,7 @@ export const productsApiSlice = apiSlice.injectEndpoints({
     }),
     createProduct: builder.mutation({
       query: () => ({ url: PRODUCTS_URL, method: 'POST' }),
-      invalidatesTags: ['Products'],
+      invalidatesTags: ['Products', 'Inventory'], // ✅ invalidate inventory pud
     }),
     updateProduct: builder.mutation({
       query: (data) => ({
@@ -49,6 +49,7 @@ export const productsApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: (result, error, arg) => [
         'Products',
+        'Inventory', // ✅ sync inventory
         { type: 'Product', id: arg.productId },
       ],
     }),
@@ -60,7 +61,7 @@ export const productsApiSlice = apiSlice.injectEndpoints({
         url: `${PRODUCTS_URL}/${productId}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['Products'],
+      invalidatesTags: ['Products', 'Inventory'], // ✅
     }),
     createReview: builder.mutation({
       query: (data) => ({
@@ -189,14 +190,6 @@ export const productsApiSlice = apiSlice.injectEndpoints({
       keepUnusedDataFor: 5,
       providesTags: ['Inventory'],
     }),
-    createInventoryItem: builder.mutation({
-      query: (data) => ({
-        url: INVENTORY_URL,
-        method: 'POST',
-        body: data,
-      }),
-      invalidatesTags: ['Inventory'],
-    }),
     updateInventoryItem: builder.mutation({
       query: ({ id, ...data }) => ({
         url: `${INVENTORY_URL}/${id}`,
@@ -218,6 +211,20 @@ export const productsApiSlice = apiSlice.injectEndpoints({
         method: 'PUT',
       }),
       invalidatesTags: ['Inventory', 'Products'],
+    }),
+    // ✅ NEW — Restock
+    restockItem: builder.mutation({
+      query: ({ id, ...data }) => ({
+        url: `${INVENTORY_URL}/${id}/restock`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['Inventory', 'Products'],
+    }),
+    // ✅ NEW — Stock History
+    getStockHistory: builder.query({
+      query: (id) => `${INVENTORY_URL}/${id}/history`,
+      keepUnusedDataFor: 5,
     }),
   }),
 });
@@ -251,8 +258,9 @@ export const {
   useGetInventoryQuery,
   useGetInventoryStatsQuery,
   useGetInventoryCategoriesQuery,
-  useCreateInventoryItemMutation,
   useUpdateInventoryItemMutation,
   useDeleteInventoryItemMutation,
   useSyncInventoryStockMutation,
+  useRestockItemMutation,      
+  useGetStockHistoryQuery,     
 } = productsApiSlice;

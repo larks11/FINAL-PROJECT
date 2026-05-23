@@ -20,7 +20,6 @@ const formatDescription = (text) => {
   return text.split('\n').map((line, i) => {
     const trimmed = line.trim();
     if (!trimmed) return <div key={i} style={{ height: '8px' }} />;
-
     const colonIdx = trimmed.indexOf(':');
     if (colonIdx > 0 && colonIdx < 30) {
       const label = trimmed.substring(0, colonIdx);
@@ -32,17 +31,16 @@ const formatDescription = (text) => {
         </div>
       );
     }
-
     if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('*')) {
       return (
         <div key={i} style={{ display: 'flex', gap: '8px', padding: '4px 0', alignItems: 'flex-start' }}>
           <span style={{ color: 'var(--accent)', fontWeight: '700', flexShrink: 0 }}>•</span>
           <span style={{ color: 'var(--text-main)', fontSize: '13px', lineHeight: '1.6' }}>
+            {trimmed.substring(1).trim()}
           </span>
         </div>
       );
     }
-
     return (
       <p key={i} style={{ color: 'var(--text-muted)', fontSize: '13px', lineHeight: '1.7', margin: '4px 0' }}>
         {trimmed}
@@ -61,7 +59,6 @@ const ProductScreen = () => {
   const [comment, setComment] = useState('');
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestMessage, setRequestMessage] = useState('');
-  // ✅ null = main/default image, object = color variant
   const [selectedColor, setSelectedColor] = useState(null);
 
   const { data: product, isLoading, refetch, error } = useGetProductDetailsQuery(productId);
@@ -74,9 +71,13 @@ const ProductScreen = () => {
   });
   const hasPurchased = orderCheck?.hasPurchased;
   const displayImage = selectedColor?.image || product?.image;
-
-  // ✅ Default color label — gikan sa admin input, dili preset
   const defaultLabel = product?.defaultColorName || 'Default';
+
+  // ✅ Reserved stock computation
+  const reserved = product?.reservedStock || 0;
+  const available = (product?.countInStock || 0) - reserved;
+  const isSoldOut = (product?.countInStock || 0) === 0 && reserved === 0;
+  const isFullyReserved = (product?.countInStock || 0) > 0 && available <= 0;
 
   const addToCartHandler = () => {
     dispatch(addToCart({
@@ -123,18 +124,25 @@ const ProductScreen = () => {
           <Meta title={product.name} description={product.description} />
 
           <Row className='mt-4'>
+            {/* LEFT — IMAGE + THUMBNAILS + DESCRIPTION */}
             <Col md={6}>
               <Image
                 src={displayImage}
                 alt={product.name}
                 fluid
-                style={{ borderRadius: '10px', border: '1px solid var(--border)', boxShadow: '0 6px 20px rgba(0,0,0,0.3)', transition: 'all 0.3s ease' }}
+                style={{
+                  borderRadius: '10px',
+                  border: '1px solid var(--border)',
+                  boxShadow: '0 6px 20px rgba(0,0,0,0.3)',
+                  transition: 'all 0.3s ease',
+                  filter: isFullyReserved ? 'grayscale(20%)' : 'none',
+                  opacity: isSoldOut ? 0.6 : 1,
+                }}
               />
 
-              {/* ✅ THUMBNAIL STRIP — default + variants, walay "Default" hardcoded */}
+              {/* THUMBNAIL STRIP */}
               {product.colorVariants && product.colorVariants.length > 0 && (
                 <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
-                  {/* Main image thumbnail */}
                   <div
                     onClick={() => setSelectedColor(null)}
                     title={defaultLabel}
@@ -142,7 +150,6 @@ const ProductScreen = () => {
                       width: '56px', height: '56px', borderRadius: '6px', overflow: 'hidden',
                       border: selectedColor === null ? '2px solid var(--accent)' : '2px solid var(--border)',
                       cursor: 'pointer', transition: 'border-color 0.2s',
-                      position: 'relative',
                     }}
                   >
                     <img src={product.image} alt={defaultLabel} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -188,7 +195,7 @@ const ProductScreen = () => {
                   </strong>
                 </ListGroup.Item>
 
-                {/* ✅ COLOR SELECTOR — default label gikan sa admin input */}
+                {/* COLOR SELECTOR */}
                 {product.colorVariants && product.colorVariants.length > 0 && (
                   <ListGroup.Item>
                     <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '8px' }}>
@@ -198,8 +205,6 @@ const ProductScreen = () => {
                       </strong>
                     </p>
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-
-                      {/* ✅ Main/default button — label gikan sa admin */}
                       <div
                         onClick={() => setSelectedColor(null)}
                         style={{
@@ -214,7 +219,6 @@ const ProductScreen = () => {
                         <img src={product.image} alt={defaultLabel} style={{ width: '24px', height: '24px', objectFit: 'cover', borderRadius: '3px' }} />
                         {defaultLabel}
                       </div>
-
                       {product.colorVariants.map((variant, i) => (
                         <div
                           key={i}
@@ -248,22 +252,37 @@ const ProductScreen = () => {
                   <ListGroup.Item>
                     <Row>
                       <Col>Price:</Col>
-                      <Col><strong style={{ color: 'var(--accent)' }}>{new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(product.price)}</strong></Col>
-                    </Row>
-                  </ListGroup.Item>
-
-                  <ListGroup.Item>
-                    <Row>
-                      <Col>Status:</Col>
                       <Col>
-                        <span style={{ color: product.countInStock > 0 ? '#2ecc71' : 'red', fontWeight: 'bold' }}>
-                          {product.countInStock > 0 ? `In Stock (${product.countInStock} left)` : 'Out Of Stock'}
-                        </span>
+                        <strong style={{ color: 'var(--accent)' }}>
+                          {new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(product.price)}
+                        </strong>
                       </Col>
                     </Row>
                   </ListGroup.Item>
 
-                  {/* ✅ Color display — admin label */}
+                  {/* ✅ UPDATED STATUS */}
+                  <ListGroup.Item>
+                    <Row>
+                      <Col>Status:</Col>
+                      <Col>
+                        {isSoldOut ? (
+                          <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>Out Of Stock</span>
+                        ) : isFullyReserved ? (
+                          <span style={{ color: '#e67e22', fontWeight: 'bold' }}>
+                            🔒 Processing Orders<br />
+                            <small style={{ fontSize: '11px' }}>({reserved} reserved)</small>
+                          </span>
+                        ) : (
+                          <span style={{ color: '#2ecc71', fontWeight: 'bold' }}>
+                            In Stock ({available} available
+                            {reserved > 0 ? `, ${reserved} reserved` : ''})
+                          </span>
+                        )}
+                      </Col>
+                    </Row>
+                  </ListGroup.Item>
+
+                  {/* COLOR DISPLAY */}
                   {product.colorVariants && product.colorVariants.length > 0 && (
                     <ListGroup.Item>
                       <Row>
@@ -284,19 +303,22 @@ const ProductScreen = () => {
 
                   {userInfo && userInfo.isAdmin ? (
                     <ListGroup.Item>
-                      <Button type='button' className='w-100' onClick={() => navigate(`/admin/product/${product._id}/edit`)} style={{ backgroundColor: '#198754', border: 'none', fontWeight: 'bold' }}>
+                      <Button type='button' className='w-100'
+                        onClick={() => navigate(`/admin/product/${product._id}/edit`)}
+                        style={{ backgroundColor: '#198754', border: 'none', fontWeight: 'bold' }}>
                         ➕ Add Stocks
                       </Button>
                     </ListGroup.Item>
                   ) : (
                     <>
-                      {product.countInStock > 0 && (
+                      {/* ✅ QTY — based sa available, dili countInStock */}
+                      {available > 0 && (
                         <ListGroup.Item>
                           <Row>
                             <Col>Qty</Col>
                             <Col>
                               <Form.Select value={qty} onChange={(e) => setQty(Number(e.target.value))}>
-                                {[...Array(product.countInStock).keys()].map((x) => (
+                                {[...Array(available).keys()].map((x) => (
                                   <option key={x + 1} value={x + 1}>{x + 1}</option>
                                 ))}
                               </Form.Select>
@@ -304,21 +326,37 @@ const ProductScreen = () => {
                           </Row>
                         </ListGroup.Item>
                       )}
+
+                      {/* ✅ ADD TO CART — disabled kung sold out or fully reserved */}
                       <ListGroup.Item>
-                        <Button type='button' className='w-100' disabled={product.countInStock === 0} onClick={addToCartHandler} style={{ backgroundColor: 'var(--accent)', border: 'none', color: 'var(--btn-text)', fontWeight: '700' }}>
-                          Add To Cart
+                        <Button
+                          type='button' className='w-100'
+                          disabled={isSoldOut || isFullyReserved}
+                          onClick={addToCartHandler}
+                          style={{ backgroundColor: 'var(--accent)', border: 'none', color: 'var(--btn-text)', fontWeight: '700' }}
+                        >
+                          {isFullyReserved
+                            ? '🔒 Currently Processing Orders'
+                            : 'Add To Cart'
+                          }
                         </Button>
                       </ListGroup.Item>
-                      {product.countInStock === 0 && userInfo && (
+
+                      {/* REQUEST BUTTON — show kung sold out OR fully reserved */}
+                      {(isSoldOut || isFullyReserved) && userInfo && (
                         <ListGroup.Item>
-                          <Button type='button' className='w-100' onClick={() => setShowRequestModal(true)} style={{ backgroundColor: '#ff6b35', border: 'none', fontWeight: 'bold' }}>
+                          <Button type='button' className='w-100'
+                            onClick={() => setShowRequestModal(true)}
+                            style={{ backgroundColor: '#ff6b35', border: 'none', fontWeight: 'bold' }}>
                             🔔 Request this Item
                           </Button>
                         </ListGroup.Item>
                       )}
-                      {product.countInStock === 0 && !userInfo && (
+                      {(isSoldOut || isFullyReserved) && !userInfo && (
                         <ListGroup.Item>
-                          <Message variant='warning'><Link to='/login'>Sign in</Link> to request this item</Message>
+                          <Message variant='warning'>
+                            <Link to='/login'>Sign in</Link> to request this item
+                          </Message>
                         </ListGroup.Item>
                       )}
                     </>
@@ -366,7 +404,8 @@ const ProductScreen = () => {
                         <Form.Label>Comment</Form.Label>
                         <Form.Control as='textarea' rows='3' required value={comment} onChange={(e) => setComment(e.target.value)} />
                       </Form.Group>
-                      <Button type='submit' disabled={loadingProductReview} style={{ backgroundColor: 'var(--accent)', border: 'none', color: 'var(--btn-text)' }}>
+                      <Button type='submit' disabled={loadingProductReview}
+                        style={{ backgroundColor: 'var(--accent)', border: 'none', color: 'var(--btn-text)' }}>
                         Submit Review
                       </Button>
                     </Form>
@@ -390,7 +429,8 @@ const ProductScreen = () => {
             </Modal.Body>
             <Modal.Footer>
               <Button variant='secondary' onClick={() => setShowRequestModal(false)}>Cancel</Button>
-              <Button onClick={handleRequestSubmit} disabled={loadingRequest} style={{ backgroundColor: '#ff6b35', border: 'none' }}>
+              <Button onClick={handleRequestSubmit} disabled={loadingRequest}
+                style={{ backgroundColor: '#ff6b35', border: 'none' }}>
                 {loadingRequest ? 'Sending...' : 'Send Request'}
               </Button>
             </Modal.Footer>

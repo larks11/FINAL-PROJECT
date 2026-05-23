@@ -86,7 +86,6 @@ const OrderListScreen = () => {
 
   const allOrders = orders || [];
 
-  // Separate archived from active
   const visibleOrders = showArchived
     ? allOrders.filter((o) => o.isArchived)
     : allOrders.filter((o) => !o.isArchived);
@@ -111,6 +110,16 @@ const OrderListScreen = () => {
   };
   const archivedCount = allOrders.filter((o) => o.isArchived).length;
 
+  const thStyle = {
+    padding: '14px 16px',
+    textAlign: 'left',
+    fontSize: '12px',
+    fontWeight: '700',
+    color: 'var(--accent)',
+    letterSpacing: '1px',
+    textTransform: 'uppercase',
+  };
+
   return (
     <div>
       {/* HEADER */}
@@ -122,7 +131,6 @@ const OrderListScreen = () => {
           <span style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
             {allOrders.length} total orders
           </span>
-          {/* Archive Toggle */}
           <button
             onClick={() => { setShowArchived(!showArchived); setFilterStatus('all'); }}
             style={{
@@ -144,7 +152,7 @@ const OrderListScreen = () => {
         </div>
       </div>
 
-      {/* STATUS FILTER TABS — only show for active orders */}
+      {/* STATUS FILTER TABS */}
       {!showArchived && (
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
           {Object.entries(statusCounts).map(([status, count]) => (
@@ -209,10 +217,8 @@ const OrderListScreen = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
               <thead>
                 <tr style={{ backgroundColor: 'var(--bg-soft)', borderBottom: '2px solid var(--accent)' }}>
-                  {['#', 'Customer', 'Date', 'Total', 'Status', 'Actions'].map((h) => (
-                    <th key={h} style={{ padding: '14px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '700', color: 'var(--accent)', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                      {h}
-                    </th>
+                  {['#', 'Customer', 'Date', 'Total', 'Status', 'Details', 'Actions'].map((h) => (
+                    <th key={h} style={thStyle}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -222,7 +228,8 @@ const OrderListScreen = () => {
                     const status = order.isCancelled ? 'Cancelled' : order.orderStatus || 'Order Created';
                     const isDelivered = order.isDelivered;
                     return (
-                      <tr key={order._id}
+                      <tr
+                        key={order._id}
                         style={{ borderBottom: '1px solid var(--border)', opacity: order.isCancelled ? 0.7 : 1 }}
                         onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-soft)'}
                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
@@ -264,10 +271,12 @@ const OrderListScreen = () => {
                             </span>
                           )}
                         </td>
+
+                        {/* ✅ DETAILS — separate column */}
                         <td style={{ padding: '14px 16px' }}>
-                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                            {/* Details — always visible */}
-                            <Link to={`/order/${order._id}`} style={{
+                          <Link
+                            to={`/order/${order._id}`}
+                            style={{
                               backgroundColor: 'transparent',
                               color: 'var(--accent)',
                               border: '1px solid var(--accent)',
@@ -276,10 +285,16 @@ const OrderListScreen = () => {
                               fontSize: '12px',
                               fontWeight: '700',
                               textDecoration: 'none',
-                            }}>
-                              Details
-                            </Link>
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            View Details
+                          </Link>
+                        </td>
 
+                        {/* ✅ ACTIONS — separate column (rightmost) */}
+                        <td style={{ padding: '14px 16px' }}>
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
                             {/* Prepare — only when Order Created */}
                             {!order.isCancelled && !order.isDelivered && order.orderStatus === 'Order Created' && (
                               <button
@@ -320,7 +335,7 @@ const OrderListScreen = () => {
                               </button>
                             )}
 
-                            {/* ✅ Archive & Delete — ONLY when Delivered */}
+                            {/* Archive & Delete — only when Delivered */}
                             {isDelivered && (
                               <>
                                 <button
@@ -359,6 +374,11 @@ const OrderListScreen = () => {
                                 </button>
                               </>
                             )}
+
+                            {/* Empty state for orders with no actions */}
+                            {!(!order.isCancelled && !order.isDelivered && (order.orderStatus === 'Order Created' || order.orderStatus === 'Preparing')) && !isDelivered && (
+                              <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>—</span>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -366,7 +386,7 @@ const OrderListScreen = () => {
                   })
                 ) : (
                   <tr>
-                    <td colSpan='6' style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <td colSpan='7' style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
                       {searchTerm
                         ? `No orders found matching "${searchTerm}"`
                         : showArchived ? 'No archived orders yet' : 'No orders yet'}

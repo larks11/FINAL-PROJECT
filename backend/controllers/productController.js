@@ -2,22 +2,19 @@ import asyncHandler from '../middleware/asyncHandler.js';
 import Product from '../models/productModel.js';
 import Request from '../models/requestModel.js';
 import Order from '../models/orderModel.js';
+import Inventory from '../models/inventoryModel.js'; // ✅ NEW
 
 const getProducts = asyncHandler(async (req, res) => {
   const pageSize = process.env.PAGINATION_LIMIT;
   const page = Number(req.query.pageNumber) || 1;
-
   const keyword = req.query.keyword
     ? { name: { $regex: req.query.keyword, $options: 'i' } }
     : {};
-
   const filter = { ...keyword, isArchived: { $ne: true } };
-
   const count = await Product.countDocuments(filter);
   const products = await Product.find(filter)
     .limit(pageSize)
     .skip(pageSize * (page - 1));
-
   res.json({ products, page, pages: Math.ceil(count / pageSize) });
 });
 
@@ -33,12 +30,9 @@ const getAdminProducts = asyncHandler(async (req, res) => {
 
 const getProductById = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id);
-  if (product) {
-    return res.json(product);
-  } else {
-    res.status(404);
-    throw new Error('Product not found');
-  }
+  if (product) return res.json(product);
+  res.status(404);
+  throw new Error('Product not found');
 });
 
 const createProduct = asyncHandler(async (req, res) => {
@@ -50,14 +44,29 @@ const createProduct = asyncHandler(async (req, res) => {
     brand: 'Sample brand',
     category: 'Sample category',
     countInStock: 0,
+    reservedStock: 0,
     numReviews: 0,
     description: 'Sample description',
     defaultColorName: '',
     colorVariants: [],
     isArchived: false,
   });
-
   const createdProduct = await product.save();
+
+  // ✅ AUTO-CREATE inventory entry para sa bag-ong product
+  await Inventory.create({
+    product:     createdProduct._id,
+    productName: createdProduct.name,
+    category:    createdProduct.category,
+    stockQty:    createdProduct.countInStock,
+    retailPrice: createdProduct.price,
+    stockHistory: [{
+      type: 'restock',
+      qty:  0,
+      note: 'Initial inventory entry — product created',
+    }],
+  });
+
   res.status(201).json(createdProduct);
 });
 
@@ -70,25 +79,28 @@ const updateProduct = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id);
 
   if (product) {
-    product.name = name;
-    product.price = price;
-    product.description = description;
-    product.image = image;
-    product.brand = brand;
-    product.category = category;
-    product.countInStock = countInStock;
-    product.colorVariants = colorVariants || [];
-    // ✅ I-save ang default color name nga gi-input sa admin
+    const oldStock = product.countInStock;
+
+    product.name             = name;
+    product.price            = price;
+    product.description      = description;
+    product.image            = image;
+    product.brand            = brand;
+    product.category         = category;
+    product.countInStock     = countInStock;
+    product.colorVariants    = colorVariants || [];
     product.defaultColorName = defaultColorName || 'Default';
 
-    if (Number(countInStock) === 0) {
-      product.isArchived = true;
+    const reserved  = product.reservedStock || 0;
+    const available = Number(countInStock) - reserved;
 
+    if (Number(countInStock) === 0 && reserved === 0) {
+      product.isArchived = true;
       await Request.create({
         user: req.user._id,
         productName: name,
         product: product._id,
-        message: `⚠️ SOLD OUT: "${name}" is now out of stock and has been archived from the homepage.`,
+        message: `⚠️ SOLD OUT: "${name}" is now out of stock and has been archived.`,
         status: 'pending',
         isRead: false,
       });
@@ -97,6 +109,25 @@ const updateProduct = asyncHandler(async (req, res) => {
     }
 
     const updatedProduct = await product.save();
+
+    // ✅ Sync inventory — update productName, category, price, stock
+    const invItem = await Inventory.findOne({ product: product._id, isActive: true });
+    if (invItem) {
+      const diff = Number(countInStock) - oldStock;
+      invItem.productName  = name;
+      invItem.category     = category;
+      invItem.retailPrice  = price;
+      invItem.stockQty     = Number(countInStock);
+      if (diff !== 0) {
+        invItem.stockHistory.push({
+          type: diff > 0 ? 'restock' : 'sold',
+          qty:  Math.abs(diff),
+          note: `Synced from product edit (${diff > 0 ? '+' : ''}${diff})`,
+        });
+      }
+      await invItem.save();
+    }
+
     res.json(updatedProduct);
   } else {
     res.status(404);
@@ -106,10 +137,8 @@ const updateProduct = asyncHandler(async (req, res) => {
 
 const toggleArchiveProduct = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id);
-
   if (product) {
     product.isArchived = !product.isArchived;
-
     if (product.isArchived) {
       await Request.create({
         user: req.user._id,
@@ -120,7 +149,6 @@ const toggleArchiveProduct = asyncHandler(async (req, res) => {
         isRead: false,
       });
     }
-
     await product.save();
     res.json({
       message: product.isArchived ? 'Product archived' : 'Product unarchived',
@@ -135,6 +163,11 @@ const toggleArchiveProduct = asyncHandler(async (req, res) => {
 const deleteProduct = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id);
   if (product) {
+    // ✅ Soft delete pud ang inventory entry
+    await Inventory.findOneAndUpdate(
+      { product: product._id },
+      { isActive: false }
+    );
     await Product.deleteOne({ _id: product._id });
     res.json({ message: 'Product removed' });
   } else {
@@ -146,7 +179,6 @@ const deleteProduct = asyncHandler(async (req, res) => {
 const createProductReview = asyncHandler(async (req, res) => {
   const { rating, comment } = req.body;
   const product = await Product.findById(req.params.id);
-
   if (product) {
     const alreadyReviewed = product.reviews.find(
       (r) => r.user.toString() === req.user._id.toString()
@@ -155,7 +187,6 @@ const createProductReview = asyncHandler(async (req, res) => {
       res.status(400);
       throw new Error('Product already reviewed');
     }
-
     const hasPurchased = await Order.findOne({
       user: req.user._id,
       'orderItems.product': product._id,
@@ -164,20 +195,17 @@ const createProductReview = asyncHandler(async (req, res) => {
       res.status(403);
       throw new Error('You can only review products you have ordered');
     }
-
     const review = {
-      name: req.user.name,
+      name:   req.user.name,
       rating: Number(rating),
       comment,
-      user: req.user._id,
+      user:   req.user._id,
     };
-
     product.reviews.push(review);
     product.numReviews = product.reviews.length;
     product.rating =
       product.reviews.reduce((acc, item) => item.rating + acc, 0) /
       product.reviews.length;
-
     await product.save();
     res.status(201).json({ message: 'Review added' });
   } else {
@@ -195,7 +223,7 @@ const getTopProducts = asyncHandler(async (req, res) => {
 
 const getProductsByCategory = asyncHandler(async (req, res) => {
   const products = await Product.find({
-    category: req.params.category,
+    category:   req.params.category,
     isArchived: { $ne: true },
   });
   res.json(products);
@@ -212,10 +240,10 @@ const checkUserOrder = asyncHandler(async (req, res) => {
 const requestProduct = asyncHandler(async (req, res) => {
   const { productId, productName, message } = req.body;
   const request = new Request({
-    user: req.user._id,
-    product: productId || null,
+    user:        req.user._id,
+    product:     productId || null,
     productName,
-    message: message || '',
+    message:     message || '',
   });
   const createdRequest = await request.save();
   res.status(201).json(createdRequest);
@@ -314,25 +342,11 @@ const markReplySeen = asyncHandler(async (req, res) => {
 });
 
 export {
-  getProducts,
-  getAdminProducts,
-  getProductById,
-  createProduct,
-  updateProduct,
-  toggleArchiveProduct,
-  deleteProduct,
-  createProductReview,
-  getTopProducts,
-  getProductsByCategory,
-  checkUserOrder,
-  requestProduct,
-  getRequests,
-  getMyRequests,
-  markRequestRead,
-  getUnreadCount,
-  deleteRequest,
-  deleteAllRequests,
-  replyToRequest,
-  userReplyToRequest,
-  markReplySeen,
+  getProducts, getAdminProducts, getProductById,
+  createProduct, updateProduct, toggleArchiveProduct,
+  deleteProduct, createProductReview, getTopProducts,
+  getProductsByCategory, checkUserOrder, requestProduct,
+  getRequests, getMyRequests, markRequestRead, getUnreadCount,
+  deleteRequest, deleteAllRequests, replyToRequest,
+  userReplyToRequest, markReplySeen,
 };
