@@ -41,8 +41,11 @@ import store from './store';
 import { Provider } from 'react-redux';
 import { PayPalScriptProvider } from '@paypal/react-paypal-js';
 import InventoryScreen from './screens/admin/InventoryScreen';
-// ✅ NEW: Notifications Screen
 import NotificationsScreen from './screens/admin/NotificationsScreen';
+// ✅ NEW: Auth & Admin screens
+import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
+import PasswordResetRequestsScreen from './screens/admin/PasswordResetRequestsScreen';
+import LockedAccountsScreen from './screens/admin/LockedAccountsScreen';
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -55,6 +58,8 @@ const router = createBrowserRouter(
       <Route path='/cart' element={<CartScreen />} />
       <Route path='/login' element={<LoginScreen />} />
       <Route path='/register' element={<RegisterScreen />} />
+      {/* ✅ PUBLIC: Forgot Password */}
+      <Route path='/forgot-password' element={<ForgotPasswordScreen />} />
 
       {/* ===== PRIVATE ROUTES ===== */}
       <Route path='' element={<PrivateRoute />}>
@@ -80,8 +85,10 @@ const router = createBrowserRouter(
         <Route path='/admin/settings' element={<AdminSettingsScreen />} />
         <Route path='/admin/inventory' element={<InventoryScreen />} />
         <Route path='/admin/accounting' element={<AccountingScreen />} />
-        {/* ✅ NEW: Notifications Route */}
         <Route path='/admin/notifications' element={<NotificationsScreen />} />
+        {/* ✅ NEW: Password Reset Requests & Locked Accounts */}
+        <Route path='/admin/reset-requests' element={<PasswordResetRequestsScreen />} />
+        <Route path='/admin/locked-accounts' element={<LockedAccountsScreen />} />
       </Route>
     </Route>
   )

@@ -24,11 +24,56 @@ const userSchema = mongoose.Schema(
     googleId: {
       type: String,
     },
+    // Account lockout fields
+    loginAttempts: {
+      type: Number,
+      default: 0,
+    },
+    lockUntil: {
+      type: Date,
+      default: null,
+    },
+    isLocked: {
+      type: Boolean,
+      default: false,
+    },
+    // Password reset request
+    passwordResetRequest: {
+      status: {
+        type: String,
+        enum: ['none', 'pending', 'approved', 'rejected'],
+        default: 'none',
+      },
+      requestedAt: {
+        type: Date,
+        default: null,
+      },
+      newPassword: {
+        type: String,
+        default: null,
+      },
+    },
+    // Notifications
+    notifications: [
+      {
+        message: { type: String },
+        read: { type: Boolean, default: false },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   {
     timestamps: true,
   }
 );
+
+// Check if account is currently locked
+userSchema.virtual('accountLocked').get(function () {
+  if (this.isLocked && this.lockUntil && this.lockUntil > Date.now()) {
+    return true;
+  }
+  return false;
+});
 
 userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);

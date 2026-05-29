@@ -15,7 +15,31 @@ const getDeliveryHours = (city = '') => {
   return { inTransit: 3, outForDelivery: 80, delivered: 92 };
 };
 
-// ── ADD ORDER — reserve stock lang, dili pa i-deduct ────────────────────────
+const getETADaysRange = (city = '') => {
+  const c = city.toLowerCase();
+  const nearbyLeyte = ['ormoc','tacloban','palo','tanauan','tolosa','dulag','abuyog','baybay','burauen','carigara','naval'];
+  const visayas = ['cebu','mandaue','lapu-lapu','lapulapu','talisay','iloilo','bacolod','dumaguete','tagbilaran'];
+  const mindanao = ['davao','cagayan de oro','zamboanga','general santos','butuan','iligan','cotabato'];
+  const luzon = ['manila','quezon','makati','pasig','taguig','pasay','caloocan','mandaluyong','marikina','paranaque','baguio','olongapo','angeles','naga','legazpi'];
+  if (nearbyLeyte.some((k) => c.includes(k))) return { min: 1, max: 3 };
+  if (visayas.some((k) => c.includes(k))) return { min: 2, max: 4 };
+  if (mindanao.some((k) => c.includes(k))) return { min: 3, max: 6 };
+  if (luzon.some((k) => c.includes(k))) return { min: 5, max: 8 };
+  return { min: 3, max: 7 };
+};
+
+const addBusinessDays = (date, days) => {
+  const d = new Date(date);
+  let added = 0;
+  while (added < days) {
+    d.setDate(d.getDate() + 1);
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) added++;
+  }
+  return d;
+};
+
+// ── ADD ORDER — reserve stock lang, dili pa i-deduct ang countInStock ─────────
 const addOrderItems = asyncHandler(async (req, res) => {
   const { orderItems, shippingAddress, paymentMethod } = req.body;
 
@@ -28,7 +52,6 @@ const addOrderItems = asyncHandler(async (req, res) => {
 
   for (const itemFromClient of orderItems) {
     const match = itemsFromDB.find((i) => i._id.toString() === itemFromClient._id);
-    // ✅ Available = countInStock - reservedStock
     const available = match.countInStock - (match.reservedStock || 0);
     if (available < itemFromClient.qty) {
       res.status(400);
@@ -40,6 +63,13 @@ const addOrderItems = asyncHandler(async (req, res) => {
     const match = itemsFromDB.find((i) => i._id.toString() === itemFromClient._id);
     return { ...itemFromClient, product: itemFromClient._id, price: match.price, _id: undefined };
   });
+
+  // ✅ Reserve stock — increment reservedStock ONLY, dili pa i-deduct countInStock
+  for (const item of dbOrderItems) {
+    await Product.findByIdAndUpdate(item.product, {
+      $inc: { reservedStock: item.qty },
+    });
+  }
 
   let settings = await Settings.findOne({});
   if (!settings) settings = await Settings.create({});
@@ -70,12 +100,10 @@ const addOrderItems = asyncHandler(async (req, res) => {
 
   const createdOrder = await order.save();
 
-  // ✅ Reserve stock lang — dili pa i-deduct ang countInStock
-  for (const item of orderItems) {
-    await Product.findByIdAndUpdate(item._id, {
-      $inc: { reservedStock: item.qty },
-    });
-  }
+  const { min, max } = getETADaysRange(shippingAddress.city);
+  createdOrder.etaStart = addBusinessDays(new Date(), min);
+  createdOrder.etaEnd = addBusinessDays(new Date(), max);
+  await createdOrder.save();
 
   await Request.create({
     user: req.user._id,
@@ -143,7 +171,7 @@ const prepareOrder = asyncHandler(async (req, res) => {
   res.json(updatedOrder);
 });
 
-// ✅ Pag Pickup — didto na i-deduct ang countInStock ug i-release ang reservedStock
+// ✅ Pag Pickup — DILI pa i-deduct ang countInStock, mag-huwat sa "In Transit"
 const pickupOrder = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id);
   if (!order) { res.status(404); throw new Error('Order not found'); }
@@ -160,16 +188,7 @@ const pickupOrder = asyncHandler(async (req, res) => {
   order.isDelivered = false;
   order.statusHistory.push({ status: 'Picked Up', timestamp: now, note: 'Ormoc City Courier' });
 
-  // ✅ I-deduct na ang actual countInStock + i-release ang reservedStock
-  for (const item of order.orderItems) {
-    await Product.findByIdAndUpdate(item.product, {
-      $inc: {
-        countInStock: -item.qty,
-        reservedStock: -item.qty,
-      },
-    });
-  }
-
+  // ✅ DILI pa i-deduct diri — mag-huwat sa advanceOrderStatuses kung "In Transit" na
   const updatedOrder = await order.save();
   res.json(updatedOrder);
 });
@@ -180,14 +199,26 @@ const advanceOrderStatuses = async () => {
     orderStatus: { $in: ['Picked Up', 'In Transit', 'Out for Delivery'] },
     isCancelled: false,
     isDelivered: false,
+    etaIsAccurate: true,
   });
 
   for (const order of orders) {
     let changed = false;
 
+    // ✅ Pag "In Transit" na — mao ni ang oras para i-deduct ang countInStock
     if (order.orderStatus === 'Picked Up' && order.inTransitAt && now >= order.inTransitAt) {
       order.orderStatus = 'In Transit';
       order.statusHistory.push({ status: 'In Transit', timestamp: order.inTransitAt, note: 'Ormoc Distribution Hub' });
+      
+      // ✅ I-deduct na ang actual countInStock + i-release ang reservedStock
+      for (const item of order.orderItems) {
+        await Product.findByIdAndUpdate(item.product, {
+          $inc: {
+            countInStock: -item.qty,
+            reservedStock: -item.qty,
+          },
+        });
+      }
       changed = true;
     }
 
@@ -209,7 +240,7 @@ const advanceOrderStatuses = async () => {
   }
 };
 
-// ✅ Cancel — i-restore ang reservedStock ug countInStock kung wala pa ma-pickup
+// ✅ Cancel — i-restore base sa kung unsay na-deduct na
 const cancelOrder = asyncHandler(async (req, res) => {
   const { reason } = req.body;
   const order = await Order.findById(req.params.id);
@@ -218,16 +249,18 @@ const cancelOrder = asyncHandler(async (req, res) => {
     if (order.isCancelled) { res.status(400); throw new Error('Order is already cancelled'); }
     if (order.isDelivered) { res.status(400); throw new Error('Cannot cancel a delivered order'); }
 
-    const alreadyPickedUp = ['Picked Up', 'In Transit', 'Out for Delivery'].includes(order.orderStatus);
+    const alreadyInTransit = ['In Transit', 'Out for Delivery'].includes(order.orderStatus);
+    const alreadyPickedUpNotTransit = order.orderStatus === 'Picked Up';
 
     for (const item of order.orderItems) {
-      if (alreadyPickedUp) {
-        // Stock na gi-deduct na pag pickup — i-restore
+      if (alreadyInTransit) {
+        // countInStock na gi-deduct pag In Transit — i-restore
         await Product.findByIdAndUpdate(item.product, {
           $inc: { countInStock: item.qty },
         });
       } else {
-        // Wala pa ma-pickup — i-release lang ang reservation
+        // Wala pa ma-In Transit (Order Created, Preparing, Picked Up)
+        // i-release lang ang reservedStock
         await Product.findByIdAndUpdate(item.product, {
           $inc: { reservedStock: -item.qty },
         });
@@ -271,8 +304,33 @@ const archiveOrder = asyncHandler(async (req, res) => {
   res.json(updatedOrder);
 });
 
+const updateOrderETA = asyncHandler(async (req, res) => {
+  const { etaDate, etaReason, isDelay } = req.body;
+  const order = await Order.findById(req.params.id);
+  if (!order) { res.status(404); throw new Error('Order not found'); }
+
+  if (etaDate === null) {
+    const { min, max } = getETADaysRange(order.shippingAddress.city);
+    order.etaStart = addBusinessDays(new Date(), min);
+    order.etaEnd = addBusinessDays(new Date(), max);
+    order.etaOverride = null;
+    order.etaReason = '';
+    order.etaIsDelayed = false;
+  } else {
+    order.etaOverride = new Date(etaDate);
+    order.etaReason = etaReason || '';
+    order.etaIsDelayed = !!isDelay;
+  }
+
+  order.etaUpdatedAt = new Date();
+  order.etaUpdatedBy = req.user.name || req.user.email;
+
+  const updatedOrder = await order.save();
+  res.json(updatedOrder);
+});
+
 export {
   addOrderItems, getMyOrders, getOrderById, updateOrderToPaid,
   updateOrderToDelivered, prepareOrder, pickupOrder, advanceOrderStatuses,
-  cancelOrder, getOrders, deleteOrder, archiveOrder,
+  cancelOrder, getOrders, deleteOrder, archiveOrder, updateOrderETA,
 };

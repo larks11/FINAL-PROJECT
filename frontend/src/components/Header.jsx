@@ -12,6 +12,7 @@ import {
   useGetUnreadCountQuery,
   useGetMyRequestsQuery,
 } from '../slices/productsApiSlice';
+import { useGetPasswordResetRequestsQuery } from '../slices/usersApiSlice';
 
 const THEMES = [
   { id: 'black-gold',    label: '🖤 Black & Gold',         dot: '#d4af37', bg: '#0a0a0a' },
@@ -136,6 +137,12 @@ const Header = () => {
   );
   const newRepliesCount = myRequests?.filter((r) => r.hasNewReply).length || 0;
 
+  // ✅ Password reset requests count (admin only)
+  const { data: resetRequests } = useGetPasswordResetRequestsQuery(
+    undefined, { skip: !userInfo?.isAdmin, pollingInterval: 60000 }
+  );
+  const resetRequestCount = resetRequests?.length || 0;
+
   const logoutHandler = async () => {
     try {
       await logoutApiCall().unwrap();
@@ -220,17 +227,17 @@ const Header = () => {
               {/* ── ADMIN ── */}
               {userInfo && userInfo.isAdmin && (
                 <>
-                  {/* 🔔 Notifications Bell — LEFT of Admin User */}
+                  {/* 🔔 Notifications Bell */}
                   <Nav.Link as={Link} to='/admin/notifications' style={{ position: 'relative' }} title='Notifications'>
-                    <FaBell style={{ fontSize: '18px', color: unreadCount > 0 ? '#ff6b35' : 'var(--text-muted)' }} />
-                    {unreadCount > 0 && (
+                    <FaBell style={{ fontSize: '18px', color: (unreadCount > 0 || resetRequestCount > 0) ? '#ff6b35' : 'var(--text-muted)' }} />
+                    {(unreadCount + resetRequestCount) > 0 && (
                       <Badge pill bg='danger' style={{ position: 'absolute', top: '2px', right: '0px', fontSize: '10px', minWidth: '16px' }}>
-                        {unreadCount}
+                        {unreadCount + resetRequestCount}
                       </Badge>
                     )}
                   </Nav.Link>
 
-                  {/* 👤 Admin User Dropdown — now contains everything */}
+                  {/* 👤 Admin Dropdown */}
                   <NavDropdown
                     title={
                       <span>
@@ -259,12 +266,23 @@ const Header = () => {
                     <NavDropdown.Item as={Link} to='/admin/accounting'>💰 Accounting</NavDropdown.Item>
                     <NavDropdown.Item as={Link} to='/admin/settings'>⚙️ Settings</NavDropdown.Item>
                     <NavDropdown.Divider />
+                    {/* ✅ NEW: Password Reset & Locked Accounts */}
+                    <NavDropdown.Item as={Link} to='/admin/reset-requests'>
+                      🔑 Password Reset Requests
+                      {resetRequestCount > 0 && (
+                        <Badge pill bg='warning' text='dark' style={{ marginLeft: '8px' }}>{resetRequestCount}</Badge>
+                      )}
+                    </NavDropdown.Item>
+                    <NavDropdown.Item as={Link} to='/admin/locked-accounts'>
+                      🔒 Locked Accounts
+                    </NavDropdown.Item>
+                    <NavDropdown.Divider />
                     <NavDropdown.Item onClick={logoutHandler} style={{ color: '#e74c3c', fontWeight: '700' }}>
                       🚪 Log Out
                     </NavDropdown.Item>
                   </NavDropdown>
 
-                  {/* 🎨 Theme — RIGHT of Admin User */}
+                  {/* 🎨 Theme */}
                   <ThemeDropdown currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} />
                 </>
               )}

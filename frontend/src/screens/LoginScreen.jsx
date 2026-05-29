@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Form, Button, Row, Col } from 'react-bootstrap';
+import { Form, Button, Row, Col, Alert } from 'react-bootstrap';
 import { useDispatch, useSelector } from 'react-redux';
 import Loader from '../components/Loader';
 import FormContainer from '../components/FormContainer';
@@ -12,6 +12,7 @@ import { GoogleLogin } from '@react-oauth/google';
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [lockError, setLockError] = useState('');
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -33,12 +34,19 @@ const LoginScreen = () => {
 
   const submitHandler = async (e) => {
     e.preventDefault();
+    setLockError('');
     try {
       const res = await login({ email, password }).unwrap();
       dispatch(setCredentials({ ...res }));
       navigate(redirect);
     } catch (err) {
-      toast.error(err?.data?.message || err.error);
+      const message = err?.data?.message || err.error || 'Login failed';
+      // Check if it's a lockout error (status 423)
+      if (err?.status === 423 || message.toLowerCase().includes('locked')) {
+        setLockError(message);
+      } else {
+        toast.error(message);
+      }
     }
   };
 
@@ -59,6 +67,13 @@ const LoginScreen = () => {
     <FormContainer>
       <h1>Sign In</h1>
 
+      {/* LOCKOUT WARNING */}
+      {lockError && (
+        <Alert variant='danger' style={{ borderRadius: '8px', fontSize: '14px' }}>
+          🔒 {lockError}
+        </Alert>
+      )}
+
       <Form onSubmit={submitHandler}>
         <Form.Group className='my-2' controlId='email'>
           <Form.Label>Email Address</Form.Label>
@@ -66,7 +81,10 @@ const LoginScreen = () => {
             type='email'
             placeholder='Enter email'
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setLockError('');
+            }}
           />
         </Form.Group>
 
@@ -76,9 +94,22 @@ const LoginScreen = () => {
             type='password'
             placeholder='Enter password'
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setLockError('');
+            }}
           />
         </Form.Group>
+
+        {/* FORGOT PASSWORD LINK */}
+        <div style={{ textAlign: 'right', marginBottom: '8px' }}>
+          <Link
+            to='/forgot-password'
+            style={{ fontSize: '13px', color: '#888', textDecoration: 'none' }}
+          >
+            Forgot Password?
+          </Link>
+        </div>
 
         <Button disabled={isLoading} type='submit' variant='primary'>
           Sign In

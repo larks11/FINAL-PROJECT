@@ -33,20 +33,20 @@ const orderSchema = mongoose.Schema(
       update_time: { type: String },
       email_address: { type: String },
     },
-    itemsPrice:    { type: Number, required: true, default: 0.0 },
-    taxPrice:      { type: Number, required: true, default: 0.0 },
+    itemsPrice: { type: Number, required: true, default: 0.0 },
+    taxPrice: { type: Number, required: true, default: 0.0 },
     shippingPrice: { type: Number, required: true, default: 0.0 },
-    totalPrice:    { type: Number, required: true, default: 0.0 },
-    isPaid:        { type: Boolean, required: true, default: false },
-    paidAt:        { type: Date },
-    isDelivered:   { type: Boolean, required: true, default: false },
-    deliveredAt:   { type: Date },
-    isCancelled:   { type: Boolean, default: false },
-    cancelledAt:   { type: Date },
-    cancelReason:  { type: String, default: '' },
-    isArchived:    { type: Boolean, default: false }, // ✅ NEW
+    totalPrice: { type: Number, required: true, default: 0.0 },
+    isPaid: { type: Boolean, required: true, default: false },
+    paidAt: { type: Date },
+    isDelivered: { type: Boolean, required: true, default: false },
+    deliveredAt: { type: Date },
+    isCancelled: { type: Boolean, default: false },
+    cancelledAt: { type: Date },
+    cancelReason: { type: String, default: '' },
+    isArchived: { type: Boolean, default: false },
 
-    // ✅ ORDER STATUS
+    // ORDER STATUS
     orderStatus: {
       type: String,
       enum: [
@@ -62,16 +62,26 @@ const orderSchema = mongoose.Schema(
     },
     statusHistory: [
       {
-        status:    { type: String },
+        status: { type: String },
         timestamp: { type: Date, default: Date.now },
-        note:      { type: String, default: '' },
+        note: { type: String, default: '' },
       },
     ],
-    preparedAt:            { type: Date },
-    pickedUpAt:            { type: Date },
-    inTransitAt:           { type: Date },
-    outForDeliveryAt:      { type: Date },
+    preparedAt: { type: Date },
+    pickedUpAt: { type: Date },
+    inTransitAt: { type: Date },
+    outForDeliveryAt: { type: Date },
     estimatedDeliveryDate: { type: Date },
+
+    // ✅ ETA SYSTEM
+etaStart: { type: Date },           // Auto-generated range start
+etaEnd: { type: Date },             // Auto-generated range end  
+etaOverride: { type: Date },        // Admin manual override (single date)
+etaReason: { type: String, default: '' },
+etaUpdatedAt: { type: Date },
+etaUpdatedBy: { type: String, default: '' },
+etaIsAccurate: { type: Boolean, default: false },  // becomes true when "In Transit"
+etaIsDelayed: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

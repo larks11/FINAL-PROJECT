@@ -12,6 +12,7 @@ import {
   getOrders,
   deleteOrder,
   archiveOrder,
+  updateOrderETA,  // ✅ NEW
 } from '../controllers/orderController.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
 
@@ -23,6 +24,7 @@ router.route('/:id/deliver').put(protect, admin, updateOrderToDelivered);
 router.route('/:id/cancel').put(protect, cancelOrder);
 router.route('/:id/prepare').put(protect, admin, prepareOrder);
 router.route('/:id/pickup').put(protect, admin, pickupOrder);
-router.route('/:id/archive').put(protect, admin, archiveOrder); // ✅ NEW
+router.route('/:id/archive').put(protect, admin, archiveOrder);
+router.route('/:id/eta').put(protect, admin, updateOrderETA);  // ✅ NEW
 
 export default router;

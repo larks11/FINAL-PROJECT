@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { Button } from 'react-bootstrap';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
+  Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
+import * as XLSX from 'xlsx';
 import Loader from '../../components/Loader';
 import { useGetSalesReportQuery, useGetTopProductsQuery } from '../../slices/ordersApiSlice';
 
@@ -11,45 +13,89 @@ const formatPeso = (v) =>
 
 const COLORS = ['#d4af37', '#3498db', '#2ecc71', '#e74c3c', '#9b59b6', '#1abc9c', '#f39c12', '#e67e22'];
 
-// ── Summary Card ─────────────────────────────────────────────────────────────
 const SummaryCard = ({ title, value, icon, color, sub }) => (
   <div style={{
-    flex: '1 1 180px',
-    backgroundColor: 'var(--bg-card)',
-    border: '1px solid var(--border)',
-    borderTop: `4px solid ${color}`,
-    borderRadius: '14px',
-    padding: '18px 20px',
+    background: 'var(--bg-card, #fff)', border: '1px solid var(--border, #dee2e6)',
+    borderRadius: '12px', padding: '20px', flex: '1', minWidth: '150px',
   }}>
-    <div style={{ fontSize: '26px', marginBottom: '8px' }}>{icon}</div>
-    <div style={{ fontSize: '22px', fontWeight: '800', color }}>{value}</div>
-    <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-main)', marginTop: '4px' }}>{title}</div>
-    {sub && <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{sub}</div>}
+    <div style={{ fontSize: '26px', marginBottom: '6px' }}>{icon}</div>
+    <div style={{ fontSize: '20px', fontWeight: '800', color: color || 'inherit' }}>{value}</div>
+    <div style={{ fontSize: '13px', color: '#888', marginTop: '4px' }}>{title}</div>
+    {sub && <div style={{ fontSize: '12px', color: '#aaa', marginTop: '2px' }}>{sub}</div>}
   </div>
 );
 
-// ── Custom Tooltip ────────────────────────────────────────────────────────────
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{
-      backgroundColor: 'var(--bg-card)',
-      border: '1px solid var(--accent)',
-      borderRadius: '10px',
-      padding: '12px 16px',
-      fontSize: '13px',
-    }}>
-      <p style={{ color: 'var(--accent)', fontWeight: '700', marginBottom: '6px' }}>{label}</p>
+    <div style={{ background: '#fff', border: '1px solid #dee2e6', borderRadius: '8px', padding: '12px', fontSize: '13px' }}>
+      <strong>{label}</strong>
       {payload.map((p, i) => (
-        <p key={i} style={{ color: p.color, margin: '2px 0' }}>
+        <div key={i} style={{ color: p.color }}>
           {p.name}: <strong>{p.name === 'Orders' ? p.value : formatPeso(p.value)}</strong>
-        </p>
+        </div>
       ))}
     </div>
   );
 };
 
-// ── Main Component ────────────────────────────────────────────────────────────
+// ✅ EXCEL EXPORT
+const exportToExcel = (reportData, topProducts, period) => {
+  const wb = XLSX.utils.book_new();
+  const summary = reportData?.summary || {};
+  const now = new Date().toLocaleString('en-PH');
+
+  // Sheet 1: Summary
+  const summaryRows = [
+    ['CELLCOM ACCOUNTING REPORT'],
+    ['Generated:', now],
+    ['Period:', period.toUpperCase()],
+    [],
+    ['METRIC', 'VALUE'],
+    ['Total Revenue (₱)', Number((summary.totalRevenue || 0).toFixed(2))],
+    ['Total Orders', summary.totalOrders || 0],
+    ['Cancelled Orders', summary.totalCancelled || 0],
+    ['Average Order Value (₱)', Number((summary.avgOrderValue || 0).toFixed(2))],
+    ['Total Shipping Collected (₱)', Number((summary.totalShipping || 0).toFixed(2))],
+    ['Total VAT Collected (₱)', Number((summary.totalTax || 0).toFixed(2))],
+    ['Total Items Sales (₱)', Number((summary.totalItemsSales || 0).toFixed(2))],
+  ];
+  const ws1 = XLSX.utils.aoa_to_sheet(summaryRows);
+  ws1['!cols'] = [{ wch: 32 }, { wch: 22 }];
+  XLSX.utils.book_append_sheet(wb, ws1, 'Summary');
+
+  // Sheet 2: Sales by Period
+  const chartData = reportData?.chartData || [];
+  const salesRows = [
+    ['Period', 'Revenue (₱)', 'Orders', 'Shipping (₱)', 'VAT (₱)', 'Items Sales (₱)'],
+    ...chartData.map((d) => [
+      d.period,
+      Number((d.sales || 0).toFixed(2)),
+      d.orders || 0,
+      Number((d.shipping || 0).toFixed(2)),
+      Number((d.tax || 0).toFixed(2)),
+      Number((d.items || 0).toFixed(2)),
+    ]),
+  ];
+  const ws2 = XLSX.utils.aoa_to_sheet(salesRows);
+  ws2['!cols'] = [{ wch: 14 }, { wch: 18 }, { wch: 10 }, { wch: 18 }, { wch: 14 }, { wch: 18 }];
+  XLSX.utils.book_append_sheet(wb, ws2, `Sales (${period})`);
+
+  // Sheet 3: Top Products
+  const prodRows = [
+    ['Rank', 'Product Name', 'Qty Sold', 'Revenue (₱)'],
+    ...(topProducts || []).map((p, i) => [
+      i + 1, p.name, p.qtySold, Number((p.revenue || 0).toFixed(2)),
+    ]),
+  ];
+  const ws3 = XLSX.utils.aoa_to_sheet(prodRows);
+  ws3['!cols'] = [{ wch: 6 }, { wch: 38 }, { wch: 12 }, { wch: 18 }];
+  XLSX.utils.book_append_sheet(wb, ws3, 'Top Products');
+
+  XLSX.writeFile(wb, `CELLCOM_Accounting_${period}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+};
+
+// ── MAIN ─────────────────────────────────────────────────────────────────────
 const AccountingScreen = () => {
   const [period, setPeriod] = useState('monthly');
 
@@ -58,208 +104,150 @@ const AccountingScreen = () => {
 
   if (loadingReport || loadingProducts) return <Loader />;
 
-  const summary    = reportData?.summary    || {};
-  const chartData  = reportData?.chartData  || [];
+  const summary = reportData?.summary || {};
+  const chartData = reportData?.chartData || [];
 
-  // Format X-axis labels
   const formatLabel = (key) => {
     if (period === 'monthly') {
       const [yr, mo] = key.split('-');
       return new Date(yr, mo - 1).toLocaleString('default', { month: 'short', year: '2-digit' });
     }
     if (period === 'weekly') return `Wk ${key.substring(5, 10)}`;
-    return key.substring(5); // MM-DD
+    return key.substring(5);
   };
 
   const displayData = chartData.map((d) => ({ ...d, label: formatLabel(d.period) }));
 
-  // Pie data for breakdown
   const pieData = [
-    { name: 'Items',    value: summary.totalItemsSales || 0 },
-    { name: 'Shipping', value: summary.totalShipping   || 0 },
-    { name: 'VAT',      value: summary.totalTax        || 0 },
+    { name: 'Items', value: summary.totalItemsSales || 0 },
+    { name: 'Shipping', value: summary.totalShipping || 0 },
+    { name: 'VAT', value: summary.totalTax || 0 },
   ].filter((d) => d.value > 0);
 
+  const cardStyle = { background: 'var(--bg-card, #fff)', border: '1px solid var(--border, #dee2e6)', borderRadius: '12px', padding: '20px' };
+
   return (
-    <div style={{ padding: '8px 0' }}>
+    <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
 
       {/* HEADER */}
-      <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
         <div>
-          <h1 style={{ color: 'var(--accent)', fontWeight: '800', fontSize: '26px', margin: 0 }}>
-            💰 Accounting & Reports
-          </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px', margin: '4px 0 0' }}>
-            Financial overview and sales analytics
-          </p>
+          <h2 style={{ fontWeight: '800', margin: 0 }}>💰 Accounting & Reports</h2>
+          <p style={{ color: '#888', margin: '4px 0 0', fontSize: '14px' }}>Financial overview and sales analytics</p>
         </div>
-        {/* Period Selector */}
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {['daily', 'weekly', 'monthly'].map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              style={{
-                padding: '8px 18px',
-                borderRadius: '8px',
-                border: `1px solid ${period === p ? 'var(--accent)' : 'var(--border)'}`,
-                backgroundColor: period === p ? 'var(--accent)' : 'var(--bg-card)',
-                color: period === p ? 'var(--btn-text)' : 'var(--text-main)',
-                fontWeight: '700',
-                fontSize: '13px',
-                cursor: 'pointer',
-                textTransform: 'capitalize',
-              }}
-            >
-              {p}
-            </button>
-          ))}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Period Selector */}
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {['daily', 'weekly', 'monthly'].map((p) => (
+              <button key={p} onClick={() => setPeriod(p)} style={{
+                padding: '8px 16px', borderRadius: '8px', cursor: 'pointer',
+                fontWeight: '700', fontSize: '13px', textTransform: 'capitalize',
+                border: `1px solid ${period === p ? '#d4af37' : 'var(--border, #dee2e6)'}`,
+                background: period === p ? '#d4af37' : 'transparent',
+                color: period === p ? '#fff' : 'inherit',
+              }}>{p}</button>
+            ))}
+          </div>
+          {/* ✅ EXPORT BUTTON */}
+          <Button
+            variant="success"
+            onClick={() => exportToExcel(reportData, topProducts, period)}
+            style={{ fontWeight: '700', borderRadius: '8px', padding: '8px 18px' }}
+          >
+            📊 Export to Excel
+          </Button>
         </div>
       </div>
 
       {/* SUMMARY CARDS */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', marginBottom: '28px' }}>
-        <SummaryCard title='Total Revenue'     value={formatPeso(summary.totalRevenue)}    icon='💰' color='#d4af37' />
-        <SummaryCard title='Total Orders'      value={summary.totalOrders || 0}            icon='🛒' color='#3498db' sub={`${summary.totalCancelled || 0} cancelled`} />
-        <SummaryCard title='Avg Order Value'   value={formatPeso(summary.avgOrderValue)}   icon='📈' color='#2ecc71' />
-        <SummaryCard title='Total Shipping'    value={formatPeso(summary.totalShipping)}   icon='🚚' color='#9b59b6' />
-        <SummaryCard title='Total VAT'         value={formatPeso(summary.totalTax)}        icon='🧾' color='#e67e22' />
-        <SummaryCard title='Net Item Sales'    value={formatPeso(summary.totalItemsSales)} icon='📦' color='#1abc9c' />
+      <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', marginBottom: '28px' }}>
+        <SummaryCard title="Total Revenue" value={formatPeso(summary.totalRevenue)} icon="💵" color="#27ae60" />
+        <SummaryCard title="Total Orders" value={summary.totalOrders || 0} icon="📦" color="#3498db" />
+        <SummaryCard title="Cancelled" value={summary.totalCancelled || 0} icon="❌" color="#e74c3c" />
+        <SummaryCard title="Avg Order Value" value={formatPeso(summary.avgOrderValue)} icon="📊" color="#9b59b6" />
+        <SummaryCard title="Total Shipping" value={formatPeso(summary.totalShipping)} icon="🚚" color="#f39c12" />
+        <SummaryCard title="Total VAT" value={formatPeso(summary.totalTax)} icon="🏛️" color="#1abc9c" />
       </div>
 
-      {/* CHARTS ROW */}
-      <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '28px' }}>
-
-        {/* LINE CHART — Revenue Trend */}
-        <div style={{
-          flex: '2 1 500px',
-          backgroundColor: 'var(--bg-card)',
-          border: '1px solid var(--border)',
-          borderRadius: '14px',
-          padding: '20px',
-        }}>
-          <h3 style={{ margin: '0 0 16px', color: 'var(--accent)', fontWeight: '800', fontSize: '15px' }}>
-            📈 Revenue Trend ({period})
-          </h3>
-          <ResponsiveContainer width='100%' height={260}>
+      {/* CHARTS */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', marginBottom: '24px' }}>
+        <div style={cardStyle}>
+          <h5 style={{ fontWeight: '700', marginBottom: '16px' }}>📈 Revenue Trend ({period})</h5>
+          <ResponsiveContainer width="100%" height={250}>
             <LineChart data={displayData}>
-              <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' />
-              <XAxis dataKey='label' tick={{ fill: 'var(--text-muted)', fontSize: 11 }} />
-              <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} tickFormatter={(v) => `₱${(v/1000).toFixed(0)}k`} />
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+              <YAxis tickFormatter={(v) => `₱${(v / 1000).toFixed(0)}k`} />
               <Tooltip content={<CustomTooltip />} />
-              <Line type='monotone' dataKey='sales' name='Revenue' stroke='#d4af37' strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+              <Line type="monotone" dataKey="sales" stroke="#d4af37" strokeWidth={2.5} dot={false} name="Revenue" />
             </LineChart>
           </ResponsiveContainer>
         </div>
-
-        {/* PIE CHART — Revenue Breakdown */}
-        <div style={{
-          flex: '1 1 260px',
-          backgroundColor: 'var(--bg-card)',
-          border: '1px solid var(--border)',
-          borderRadius: '14px',
-          padding: '20px',
-        }}>
-          <h3 style={{ margin: '0 0 16px', color: 'var(--accent)', fontWeight: '800', fontSize: '15px' }}>
-            🥧 Revenue Breakdown
-          </h3>
+        <div style={cardStyle}>
+          <h5 style={{ fontWeight: '700', marginBottom: '16px' }}>🥧 Revenue Breakdown</h5>
           {pieData.length > 0 ? (
-            <ResponsiveContainer width='100%' height={260}>
+            <ResponsiveContainer width="100%" height={250}>
               <PieChart>
-                <Pie data={pieData} cx='50%' cy='50%' outerRadius={90} dataKey='value' label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                <Pie data={pieData} cx="50%" cy="50%" outerRadius={80} dataKey="value"
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
                   {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Pie>
                 <Tooltip formatter={(v) => formatPeso(v)} />
-                <Legend />
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '60px' }}>No data</p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '250px', color: '#aaa' }}>No data</div>
           )}
         </div>
       </div>
 
-      {/* BAR CHART — Orders Count */}
-      <div style={{
-        backgroundColor: 'var(--bg-card)',
-        border: '1px solid var(--border)',
-        borderRadius: '14px',
-        padding: '20px',
-        marginBottom: '28px',
-      }}>
-        <h3 style={{ margin: '0 0 16px', color: 'var(--accent)', fontWeight: '800', fontSize: '15px' }}>
-          📊 Orders Count ({period})
-        </h3>
-        <ResponsiveContainer width='100%' height={220}>
+      <div style={{ ...cardStyle, marginBottom: '24px' }}>
+        <h5 style={{ fontWeight: '700', marginBottom: '16px' }}>📊 Orders Count ({period})</h5>
+        <ResponsiveContainer width="100%" height={200}>
           <BarChart data={displayData}>
-            <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' />
-            <XAxis dataKey='label' tick={{ fill: 'var(--text-muted)', fontSize: 11 }} />
-            <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} allowDecimals={false} />
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+            <YAxis />
             <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey='orders' name='Orders' fill='#3498db' radius={[6, 6, 0, 0]} />
+            <Bar dataKey="orders" fill="#3498db" radius={[4, 4, 0, 0]} name="Orders" />
           </BarChart>
         </ResponsiveContainer>
       </div>
 
-      {/* TOP PRODUCTS TABLE */}
-      <div style={{
-        backgroundColor: 'var(--bg-card)',
-        border: '1px solid var(--border)',
-        borderRadius: '14px',
-        overflow: 'hidden',
-      }}>
-        <div style={{
-          padding: '16px 20px',
-          backgroundColor: 'var(--bg-soft)',
-          borderBottom: '2px solid var(--accent)',
-        }}>
-          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: 'var(--accent)' }}>
-            🏆 Top Selling Products
-          </h3>
-        </div>
+      {/* TOP PRODUCTS */}
+      <div style={cardStyle}>
+        <h5 style={{ fontWeight: '700', marginBottom: '16px' }}>🏆 Top Selling Products</h5>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
             <thead>
-              <tr style={{ backgroundColor: 'var(--bg-soft)' }}>
+              <tr style={{ background: '#f8f9fa' }}>
                 {['Rank', 'Product Name', 'Qty Sold', 'Revenue'].map((h) => (
-                  <th key={h} style={{
-                    padding: '12px 16px', textAlign: 'left',
-                    fontSize: '12px', fontWeight: '700', color: 'var(--accent)',
-                    letterSpacing: '1px', textTransform: 'uppercase',
-                    borderBottom: '1px solid var(--border)',
-                  }}>{h}</th>
+                  <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: '700', borderBottom: '2px solid #dee2e6' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {(topProducts || []).map((p, i) => (
-                <tr
-                  key={i}
-                  style={{ borderBottom: '1px solid var(--border)' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-soft)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                >
-                  <td style={{ padding: '12px 16px' }}>
+                <tr key={i} style={{ borderBottom: '1px solid #f0f0f0' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                  <td style={{ padding: '10px 14px' }}>
                     <span style={{
-                      backgroundColor: i < 3 ? '#d4af37' : 'var(--bg-soft)',
-                      color: i < 3 ? '#000' : 'var(--text-muted)',
-                      borderRadius: '50%', width: '28px', height: '28px',
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      fontWeight: '800', fontSize: '13px',
-                    }}>
-                      {i + 1}
-                    </span>
+                      width: '26px', height: '26px', borderRadius: '50%', display: 'inline-flex',
+                      alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '700',
+                      background: i === 0 ? '#d4af37' : i === 1 ? '#aaa' : i === 2 ? '#cd7f32' : '#eee',
+                      color: i < 3 ? '#fff' : '#666',
+                    }}>{i + 1}</span>
                   </td>
-                  <td style={{ padding: '12px 16px', color: 'var(--text-main)', fontWeight: '600' }}>{p.name}</td>
-                  <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontWeight: '600' }}>{p.qtySold} pcs</td>
-                  <td style={{ padding: '12px 16px', color: 'var(--accent)', fontWeight: '700' }}>{formatPeso(p.revenue)}</td>
+                  <td style={{ padding: '10px 14px', fontWeight: '500' }}>{p.name}</td>
+                  <td style={{ padding: '10px 14px' }}>{p.qtySold} pcs</td>
+                  <td style={{ padding: '10px 14px', fontWeight: '700', color: '#27ae60' }}>{formatPeso(p.revenue)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
-
     </div>
   );
 };
